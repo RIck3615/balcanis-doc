@@ -237,4 +237,18 @@ select length(public.reset_agent_password((select user_id from agent_cree))) as 
 select test.as_user('trt@balcanis.test');
 select test.expect_error($$select * from public.create_agent('z@y.cd', 'Z', '{ADM}')$$, 'rôle requis');
 select test.expect_error(format($$select public.reset_agent_password(%L)$$, (select user_id from agent_cree)), 'rôle requis');
+-- Bureaux (0010)
+select test.as_user('chef@balcanis.test');
+select (public.create_office('bzv', 'Brazzaville', 'cg')).code;
+select test.expect_error($$select public.create_office('BZV', 'Doublon', 'CG')$$, 'déjà utilisé');
+select test.expect_error($$select public.create_office('BRAZ', 'X', 'CG')$$, '3 lettres');
+select test.expect_error($$select public.create_office('LBV', 'Libreville', 'GAB')$$, '2 lettres');
+select code, agents, open_dossiers from public.office_stats() order by code;
+select public.update_office('BZV', 'Brazzaville Centre', 'CG', false);
+select test.expect_error($$select public.create_client('A', 'B', null, null, null, 'CG', 'BZV')$$, 'fermé');
+select public.update_office('BZV', 'Brazzaville Centre', 'CG', true);
+select (public.create_client('A', 'B', null, null, null, 'CG', 'BZV')).office_code as client_bzv;
+select test.as_user('gbr@balcanis.test');
+select test.expect_error($$select public.create_office('PNR', 'Pointe-Noire', 'CG')$$, 'rôle requis');
+select count(*) as stats_vues_par_gbr from public.office_stats();
 select 'SCÉNARIO RÉUSSI' as resultat;

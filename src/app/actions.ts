@@ -261,3 +261,23 @@ export async function passwordChangedAction() {
   await supabase.rpc("password_changed");
   revalidatePath("/", "layout");
 }
+
+// ---------------------------------------------------------------- bureaux (ADM, CHF)
+export async function createOfficeAction(_: ActionResult, fd: FormData): Promise<ActionResult> {
+  const res = await rpc("create_office", { p_code: str(fd, "code"), p_name: str(fd, "name"), p_country: str(fd, "country") });
+  if (res.error) return { error: res.error };
+  revalidatePath("/admin/bureaux");
+  return { ok: `Bureau ${(res.data as { code: string }).code} créé` };
+}
+
+export async function updateOfficeAction(_: ActionResult, fd: FormData): Promise<ActionResult> {
+  const res = await rpc("update_office", {
+    p_code: str(fd, "code"),
+    p_name: str(fd, "name"),
+    p_country: str(fd, "country"),
+    p_active: fd.get("active") === "on",
+  });
+  if (res.error) return { error: res.error };
+  revalidatePath("/admin/bureaux");
+  return { ok: "Bureau enregistré" };
+}

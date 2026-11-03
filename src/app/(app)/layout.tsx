@@ -24,6 +24,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/controle", label: "File de contrôle", icon: "check", show: hasRole(profile, "CTL") },
     { href: "/heures", label: "Heures et paie", icon: "clock", show: hasRole(profile, "TRT", "GBR", "CHF", "ADM") },
     { href: "/admin/agents", label: "Agents", icon: "users", show: hasRole(profile, "ADM", "CHF") },
+    { href: "/admin/bureaux", label: "Bureaux", icon: "building", show: hasRole(profile, "ADM", "CHF") },
     { href: "/profil", label: "Mon profil", icon: "user", show: true },
   ];
   const initials = (profile.full_name || profile.email)
