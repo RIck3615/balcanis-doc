@@ -33,7 +33,7 @@ Elle met en œuvre le document « Plateforme BalCanis — Cadrage fonctionnel de
 ### 1. Créer le projet Supabase
 
 1. Créez un projet sur [supabase.com](https://supabase.com) (région : Canada si disponible).
-2. Dans **SQL Editor**, exécutez dans l'ordre les fichiers de `supabase/migrations/` : `0001` à `0005`.
+2. Dans **SQL Editor**, collez et exécutez `supabase/install.sql` (les migrations `0001` à `0005` réunies, à lancer une seule fois sur un projet vide).
    Avec la CLI Supabase : `supabase link --project-ref VOTRE_REF` puis `supabase db push`.
 3. Dans **Authentication > Providers**, gardez seulement « Email » et désactivez les inscriptions publiques (**Allow new users to sign up** : non). Les comptes sont créés par invitation.
 4. Activez l'authentification à deux facteurs (**Authentication > Multi-Factor**) : c'est une exigence du cadrage.
