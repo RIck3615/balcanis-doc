@@ -208,3 +208,19 @@ export async function setAvailabilityAction(_: ActionResult, fd: FormData): Prom
   revalidatePath("/dossiers/nouveau");
   return { ok: available ? "Marqué disponible" : "Marqué indisponible" };
 }
+
+// ---------------------------------------------------------------- notifications
+export async function openNotificationAction(fd: FormData) {
+  const id = Number(str(fd, "id"));
+  const link = str(fd, "link");
+  const supabase = await createClient();
+  await supabase.rpc("mark_notifications_read", { p_ids: [id] });
+  revalidatePath("/", "layout");
+  redirect(link.startsWith("/") ? link : "/notifications");
+}
+
+export async function markAllNotificationsReadAction() {
+  const supabase = await createClient();
+  await supabase.rpc("mark_notifications_read", { p_ids: null });
+  revalidatePath("/", "layout");
+}

@@ -16,10 +16,11 @@ Elle met en œuvre le document « Plateforme BalCanis : Cadrage fonctionnel de l
 | Contrôle qualité | Auto-vérification par l'agent de traitement, liste de contrôle par le contrôleur, renvois numérotés (`…-R01`) avec motifs. Le contrôleur ne peut jamais être le traitant |
 | Validation | Seul le chef du cabinet valide et soumet (aucune délégation) ; numéro de demande obligatoire |
 | Temps et paie | Chronomètre par dossier, pause automatique après 10 minutes d'inactivité, temps du statut 55 mesuré mais non payé, validation des heures après le contrôle, corrections avec motif, relevé mensuel par agent |
+| Notifications | Cloche avec compteur en temps réel et fenêtre d'alerte : nouveau dossier à collecter, collecte complète à assigner, dossier assigné, information client à obtenir, prêt au contrôle, renvoi, validation finale, soumission, décision, annulation, coordonnées de paiement à confirmer, dossier bloqué depuis 7 jours |
 | Journal d'audit | Chaque action est enregistrée (qui, quand, avant/après, motif), y compris la consultation des pièces. Le journal ne peut être ni modifié ni effacé |
 | Agents | Rôles, bureau, programmes certifiés, taux horaire ; chaque agent choisit son moyen et sa fréquence de paiement, l'administrateur confirme |
 
-**Pas encore fait** (phase 2) : portail client, module de formation et certification, tableaux de bord avancés, notifications par courriel, saisie des formulaires IRCC dans la plateforme, export comptable.
+**Pas encore fait** (phase 2) : portail client, module de formation et certification, tableaux de bord avancés, envoi des notifications par courriel ou WhatsApp, saisie des formulaires IRCC dans la plateforme, export comptable.
 
 ## Principes de sécurité
 
@@ -51,6 +52,16 @@ where email = 'votre-courriel@exemple.com';
 ```
 
 Ensuite, tout se fait dans l'application : invitez les agents dans Supabase, puis attribuez leurs rôles dans **Agents**.
+
+### Rappel quotidien des dossiers bloqués (facultatif)
+
+Dans Supabase, activez l'extension **pg_cron** (Database > Extensions), puis exécutez :
+
+```sql
+select cron.schedule('dossiers-bloques', '0 7 * * *', $$select public.notify_stale_dossiers(7)$$);
+```
+
+Chaque matin à 7 h UTC (8 h à Kinshasa), les gestionnaires reçoivent une notification pour chaque dossier de leur bureau resté 7 jours ou plus dans le même statut.
 
 ### 3. Lancer l'application
 

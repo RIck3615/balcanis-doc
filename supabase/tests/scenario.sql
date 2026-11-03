@@ -191,4 +191,18 @@ select test.as_user('col2@balcanis.test');
 select public.set_availability(null, false);
 select test.as_user('gbr@balcanis.test');
 select test.expect_error(format($$select public.create_dossier(%L, 'PE')$$, (select v from ctx where k = 'client')), 'Aucun agent de collecte disponible');
+-- Notifications (0007)
+reset role;
+select p.agent_code, n.kind, n.title, n.body
+from public.notifications n join public.profiles p on p.id = n.user_id
+where n.dossier_id = (select v::uuid from ctx where k = 'dossier')
+order by n.id;
+select count(*) as notifs_paiement_adm from public.notifications where kind = 'paiement';
+set role authenticated;
+select test.as_user('trt@balcanis.test');
+select count(*) as mes_notifs, count(*) filter (where read_at is null) as non_lues from public.notifications;
+select test.expect_error($$update public.notifications set read_at = now()$$, 'permission denied');
+select public.mark_notifications_read();
+select count(*) filter (where read_at is null) as non_lues_apres from public.notifications;
+select test.expect_error($$select public.notify(auth.uid(), null, 'x', 'y')$$, 'permission denied');
 select 'SCÉNARIO RÉUSSI' as resultat;

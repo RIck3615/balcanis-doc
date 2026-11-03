@@ -3,9 +3,17 @@ import { getProfile, hasRole } from "@/lib/auth";
 import { ROLE_LABELS } from "@/lib/labels";
 import { signOut } from "@/app/actions";
 import { Nav, type NavItem } from "@/components/Nav";
+import { NotificationBell } from "@/components/NotificationBell";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const profile = await getProfile();
+  const supabase = await createClient();
+  const { count: unread } = await supabase
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", profile.id)
+    .is("read_at", null);
   const items: (NavItem & { show: boolean })[] = [
     { href: "/", label: "Tableau de bord", icon: "home", show: true },
     { href: "/dossiers", label: "Dossiers", icon: "folder", show: true },
@@ -27,12 +35,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <aside className="border-b border-slate-200 bg-white md:sticky md:top-0 md:flex md:h-screen md:w-64 md:shrink-0 md:flex-col md:border-b-0 md:border-r">
         <div className="flex items-center gap-3 px-5 py-5">
           <Image src="/logo-mark.png" alt="" width={40} height={40} priority />
-          <div className="leading-tight">
+          <div className="flex-1 leading-tight">
             <p className="text-lg font-bold tracking-tight text-navy">
               Bal<span className="text-brand-red">CAN</span>
             </p>
             <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">Gestion des dossiers</p>
           </div>
+          <NotificationBell userId={profile.id} unread={unread ?? 0} />
         </div>
         <Nav items={items.filter((i) => i.show)} />
         <div className="mt-auto hidden p-3 md:block">

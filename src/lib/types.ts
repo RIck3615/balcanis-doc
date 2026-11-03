@@ -165,3 +165,14 @@ export interface StatusTransition {
   roles: AppRole[];
   reason_required: boolean;
 }
+
+export interface NotificationRow {
+  id: number;
+  dossier_id: string | null;
+  kind: string;
+  title: string;
+  body: string | null;
+  link: string | null;
+  created_at: string;
+  read_at: string | null;
+}
