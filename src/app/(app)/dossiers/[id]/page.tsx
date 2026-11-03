@@ -1,0 +1,434 @@
+import { notFound } from "next/navigation";
+import { getProfile, hasRole } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import { actorCan, isDedicatedTransition } from "@/lib/permissions";
+import {
+  RETURN_REASONS, STATUS_LABELS, formatDate, formatDateTime, formatDuration, pad2, personLabel,
+} from "@/lib/labels";
+import type {
+  AuditEntry, ChecklistItem, Client, DocumentCategory, DocumentRow, DocumentType, Dossier, Member,
+  Review, StaffEntry, StatusTransition, TimeSession,
+} from "@/lib/types";
+import { ActionForm } from "@/components/ActionForm";
+import { Card, Empty, Field, StatusBadge, inputClass } from "@/components/ui";
+import { DocumentUpload } from "@/components/DocumentUpload";
+import { OpenDocumentButton } from "@/components/OpenDocumentButton";
+import { Timer } from "@/components/Timer";
+import {
+  addMemberAction, assignAction, correctSessionAction, submitDossierAction, submitReviewAction,
+  transitionAction, validateHoursAction,
+} from "@/app/actions";
+
+export default async function DossierPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const profile = await getProfile();
+  const supabase = await createClient();
+
+  const { data: dossierData } = await supabase.from("dossiers").select("*").eq("id", id).maybeSingle();
+  if (!dossierData) notFound();
+  const d = dossierData as Dossier;
+
+  const [
+    { data: client }, { data: members }, { data: documents }, { data: types }, { data: categories },
+    { data: missing }, { data: staff }, { data: transitions }, { data: reviews }, { data: checklist },
+    { data: sessions }, { data: activeSession }, { data: audit }, { data: program }, { data: statuses },
+  ] = await Promise.all([
+    supabase.from("clients").select("*").eq("id", d.client_id).maybeSingle(),
+    supabase.from("dossier_members").select("*").eq("dossier_id", id).order("person_code"),
+    supabase.from("documents").select("*").eq("dossier_id", id).order("category_code").order("type_code").order("version", { ascending: false }),
+    supabase.from("document_types").select("*").eq("active", true).order("label"),
+    supabase.from("document_categories").select("*").order("code"),
+    supabase.rpc("missing_documents", { p_dossier: id }),
+    supabase.from("staff_directory").select("*").eq("active", true).order("full_name"),
+    supabase.from("status_transitions").select("*").eq("from_status", d.status),
+    supabase.from("reviews").select("*").eq("dossier_id", id).order("created_at", { ascending: false }),
+    supabase.from("checklist_items").select("*").eq("active", true).or(`program_code.is.null,program_code.eq.${d.program_code}`).order("sort"),
+    supabase.from("time_sessions").select("*").eq("dossier_id", id).order("started_at", { ascending: false }),
+    supabase.from("time_sessions").select("dossier_id, started_at, dossiers(number)").eq("agent_id", profile.id).is("ended_at", null).maybeSingle(),
+    supabase.from("audit_log").select("id, created_at, actor_code, action, object_type, reason").eq("dossier_id", id).order("id", { ascending: false }).limit(300),
+    supabase.from("programs").select("name").eq("code", d.program_code).maybeSingle(),
+    supabase.from("dossier_statuses").select("code, timer_open, billable").eq("code", d.status).single(),
+  ]);
+
+  const staffList = (staff ?? []) as StaffEntry[];
+  const nameOf = (uid: string | null) => {
+    if (!uid) return "—";
+    const s = staffList.find((x) => x.id === uid);
+    return s ? `${s.agent_code ?? ""} · ${s.full_name}` : "—";
+  };
+  const memberList = (members ?? []) as Member[];
+  const docList = (documents ?? []) as DocumentRow[];
+  const categoryList = (categories ?? []) as DocumentCategory[];
+  const typeList = (types ?? []) as DocumentType[];
+  const typeLabel = (code: string) => typeList.find((t) => t.code === code)?.label ?? code;
+  const items = (checklist ?? []) as ChecklistItem[];
+  const sessionList = (sessions ?? []) as TimeSession[];
+
+  const closed = d.status === 90 || d.status === 99;
+  const isProcessor = hasRole(profile, "TRT") && d.processor_id === profile.id;
+  const isController = hasRole(profile, "CTL") && d.controller_id === profile.id && d.processor_id !== profile.id;
+  const isManager = actorCan(profile, d, ["GBR", "CHF", "ADM"]);
+  const canUpload = !closed && (d.status !== 80 || hasRole(profile, "CHF")) && actorCan(profile, d, ["COL", "TRT", "GBR", "CHF", "ADM"]);
+  const canAddMember = d.status < 40 && actorCan(profile, d, ["COL", "TRT", "GBR", "CHF", "ADM"]);
+  const simpleTransitions = ((transitions ?? []) as StatusTransition[]).filter(
+    (t) => !isDedicatedTransition(t.from_status, t.to_status) && actorCan(profile, d, t.roles),
+  );
+
+  const active = activeSession
+    ? {
+        dossier_id: activeSession.dossier_id as string,
+        started_at: activeSession.started_at as string,
+        number: (activeSession.dossiers as unknown as { number: string } | null)?.number ?? "",
+      }
+    : null;
+
+  const totalMs = (filter: (s: TimeSession) => boolean) =>
+    sessionList.filter((s) => s.ended_at && filter(s)).reduce((acc, s) => acc + (new Date(s.ended_at!).getTime() - new Date(s.started_at).getTime()), 0);
+
+  return (
+    <div className="space-y-4">
+      {/* En-tête */}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="font-mono text-xl font-semibold">{d.number}</p>
+          <p className="text-sm text-slate-600">
+            {d.program_code} — {program?.name} · Bureau {d.office_code} · ouvert le {formatDate(d.opened_at)}
+          </p>
+          <p className="text-sm text-slate-600">
+            Client : {(client as Client | null) ? `${client!.last_name} ${client!.first_name}` : "—"}{" "}
+            <span className="font-mono text-xs">{client?.client_code}</span>
+          </p>
+        </div>
+        <div className="text-right">
+          <StatusBadge status={d.status} />
+          <p className="mt-1 text-xs text-slate-500">depuis le {formatDateTime(d.status_changed_at)}</p>
+          {d.return_count > 0 && <p className="text-xs text-amber-800">{d.return_count} renvoi(s)</p>}
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="space-y-4 lg:col-span-2">
+          {/* Personnes assignées */}
+          <Card title="Intervenants">
+            <dl className="grid gap-2 text-sm sm:grid-cols-3">
+              <div><dt className="text-xs text-slate-500">Agent de collecte</dt><dd>{nameOf(d.collector_id)}</dd></div>
+              <div><dt className="text-xs text-slate-500">Agent de traitement</dt><dd>{nameOf(d.processor_id)}</dd></div>
+              <div><dt className="text-xs text-slate-500">Contrôleur</dt><dd>{nameOf(d.controller_id)}</dd></div>
+              {d.submission_number && (
+                <div><dt className="text-xs text-slate-500">N° de demande</dt><dd className="font-mono">{d.submission_number} ({formatDate(d.submitted_at)})</dd></div>
+              )}
+              {d.decision && <div className="sm:col-span-2"><dt className="text-xs text-slate-500">Décision</dt><dd>{d.decision}</dd></div>}
+            </dl>
+          </Card>
+
+          {/* Auto-vérification par l'agent de traitement */}
+          {isProcessor && [30, 55, 75].includes(d.status) && (
+            <Card title="Auto-vérification avant le contrôle">
+              <ChecklistForm dossierId={id} level="auto" items={items.filter((i) => i.level === "auto")} submitLabel="Envoyer au contrôle" />
+            </Card>
+          )}
+
+          {/* Contrôle */}
+          {isController && d.status === 50 && (
+            <Card title="Liste de contrôle">
+              <p className="mb-3 text-sm text-slate-600">Un seul point non conforme renvoie le dossier à l&apos;agent de traitement (statut 55).</p>
+              <ChecklistForm dossierId={id} level="controle" items={items.filter((i) => i.level === "controle")} submitLabel="Enregistrer le contrôle" withReasons />
+            </Card>
+          )}
+
+          {/* Pièces manquantes */}
+          {!closed && d.status < 40 && (
+            <Card title={`Pièces obligatoires manquantes (${(missing ?? []).length})`}>
+              {(missing ?? []).length === 0 ? (
+                <Empty>Toutes les pièces obligatoires sont présentes.</Empty>
+              ) : (
+                <ul className="grid gap-1 text-sm sm:grid-cols-2">
+                  {(missing as { person_code: string; type_code: string; type_label: string }[]).map((m) => (
+                    <li key={m.person_code + m.type_code} className="flex gap-2">
+                      <span className="font-mono text-xs text-slate-500">{m.person_code}</span>{m.type_label}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+          )}
+
+          {/* Pièces, rangées par sous-dossier */}
+          <Card title="Pièces du dossier">
+            {docList.length === 0 && <Empty>Aucune pièce déposée.</Empty>}
+            <div className="space-y-3">
+              {categoryList.map((c) => {
+                const inCat = docList.filter((doc) => doc.category_code === c.code);
+                if (inCat.length === 0) return null;
+                const current = inCat.filter((doc) => doc.is_current);
+                const older = inCat.filter((doc) => !doc.is_current);
+                return (
+                  <div key={c.code}>
+                    <p className="font-mono text-xs font-semibold text-slate-500">{d.number}/{c.folder}</p>
+                    <ul className="mt-1 divide-y divide-slate-100">
+                      {current.map((doc) => (
+                        <li key={doc.id} className="flex flex-wrap items-center justify-between gap-2 py-1.5 text-sm">
+                          <span>
+                            <span className="font-mono text-xs">{doc.file_name}</span>
+                            <span className="ml-2 text-slate-500">{typeLabel(doc.type_code)} · {doc.person_code}</span>
+                            {doc.expires_on && <span className="ml-2 text-xs text-slate-500">expire le {formatDate(doc.expires_on)}</span>}
+                          </span>
+                          <OpenDocumentButton documentId={doc.id} />
+                        </li>
+                      ))}
+                    </ul>
+                    {older.length > 0 && (
+                      <details className="mt-1 text-xs text-slate-500">
+                        <summary className="cursor-pointer">{older.length} version(s) précédente(s)</summary>
+                        <ul className="mt-1 space-y-1">
+                          {older.map((doc) => (
+                            <li key={doc.id} className="flex items-center gap-2">
+                              <span className="font-mono">{doc.file_name}</span>
+                              <OpenDocumentButton documentId={doc.id} />
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+
+          {canUpload && (
+            <Card title="Déposer une pièce">
+              <DocumentUpload dossierId={id} members={memberList} categories={categoryList} types={typeList} />
+            </Card>
+          )}
+
+          {/* Historique des contrôles */}
+          {(reviews ?? []).length > 0 && (
+            <Card title="Vérifications et contrôles">
+              <ul className="space-y-2 text-sm">
+                {((reviews ?? []) as Review[]).map((r) => (
+                  <li key={r.id} className="rounded-md border border-slate-100 p-2">
+                    <p>
+                      <span className="font-medium">{r.level === "auto" ? "Auto-vérification" : "Contrôle"}</span>{" "}
+                      <span className={r.result === "renvoye" ? "text-amber-800" : "text-emerald-700"}>
+                        {r.result === "renvoye" ? `renvoyé ${r.return_code ?? ""}` : "accepté"}
+                      </span>{" "}
+                      <span className="text-xs text-slate-500">· {nameOf(r.reviewer_id)} · {formatDateTime(r.created_at)}</span>
+                    </p>
+                    {r.reason_codes.length > 0 && <p className="text-xs">Motifs : {r.reason_codes.map((c) => RETURN_REASONS[c] ?? c).join(", ")}</p>}
+                    {r.comment && <p className="text-xs text-slate-700">{r.comment}</p>}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
+          {/* Journal */}
+          <Card title="Journal du dossier">
+            <ol className="max-h-96 space-y-1 overflow-y-auto text-xs">
+              {((audit ?? []) as AuditEntry[]).map((a) => (
+                <li key={a.id} className="flex gap-2">
+                  <span className="shrink-0 text-slate-500 tabular-nums">{formatDateTime(a.created_at)}</span>
+                  <span className="shrink-0 font-mono">{a.actor_code ?? "système"}</span>
+                  <span>{a.action}{a.reason ? ` — ${a.reason}` : ""}</span>
+                </li>
+              ))}
+            </ol>
+          </Card>
+        </div>
+
+        {/* Colonne de droite : actions */}
+        <div className="space-y-4">
+          {simpleTransitions.length > 0 && (
+            <Card title="Actions">
+              <div className="space-y-4">
+                {simpleTransitions.map((t) => (
+                  <ActionForm
+                    key={t.to_status}
+                    action={transitionAction}
+                    submitLabel={`→ ${pad2(t.to_status)} ${STATUS_LABELS[t.to_status]}`}
+                    variant={t.to_status === 99 ? "danger" : "primary"}
+                    confirmMessage={t.to_status === 99 ? "Annuler définitivement ce dossier ?" : undefined}
+                  >
+                    <input type="hidden" name="dossier" value={id} />
+                    <input type="hidden" name="to" value={t.to_status} />
+                    {t.reason_required && (
+                      <Field label={t.to_status === 90 ? "Décision reçue" : "Motif (obligatoire)"}>
+                        <textarea name="reason" required rows={2} className={inputClass} />
+                      </Field>
+                    )}
+                  </ActionForm>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {hasRole(profile, "CHF") && d.status === 70 && (
+            <Card title="Soumission aux autorités">
+              <ActionForm action={submitDossierAction} submitLabel="Marquer comme soumis" confirmMessage="Confirmer la soumission ?">
+                <input type="hidden" name="dossier" value={id} />
+                <Field label="Numéro de demande (accusé de réception)">
+                  <input name="submission_number" required className={inputClass} />
+                </Field>
+              </ActionForm>
+              <p className="mt-2 text-xs text-slate-500">Déposez aussi le paquet soumis et l&apos;accusé de réception dans 12_SOUMISSION.</p>
+            </Card>
+          )}
+
+          {isProcessor && !closed && (
+            <Card title="Chronomètre">
+              <Timer dossierId={id} canRun={!!statuses?.timer_open} billable={!!statuses?.billable} active={active} />
+            </Card>
+          )}
+
+          {isManager && !closed && d.status !== 80 && (
+            <Card title="Assignation">
+              <div className="space-y-4">
+                {d.status >= 15 && (
+                  <AssignForm dossier={d} role="TRT" label="Agent de traitement"
+                    agents={staffList.filter((s) => s.roles.includes("TRT") && (s.certified_programs.includes(d.program_code) || s.certified_programs.includes("*")) && s.id !== d.controller_id)}
+                    reasonRequired={d.processor_id !== null} />
+                )}
+                <AssignForm dossier={d} role="COL" label="Agent de collecte"
+                  agents={staffList.filter((s) => s.roles.includes("COL"))} reasonRequired={d.collector_id !== null} />
+                {d.status >= 40 && (
+                  <AssignForm dossier={d} role="CTL" label="Contrôleur"
+                    agents={staffList.filter((s) => s.roles.includes("CTL") && s.id !== d.processor_id)} reasonRequired />
+                )}
+              </div>
+            </Card>
+          )}
+
+          <Card title="Personnes du dossier">
+            <ul className="space-y-1 text-sm">
+              {memberList.map((m) => (
+                <li key={m.id}>
+                  <span className="font-mono text-xs text-slate-500">{m.person_code}</span> {m.last_name} {m.first_name}
+                  <span className="text-xs text-slate-500"> · {personLabel(m.person_code)}{m.accompanying ? "" : " (n'accompagne pas)"}</span>
+                </li>
+              ))}
+            </ul>
+            {canAddMember && (
+              <details className="mt-3">
+                <summary className="cursor-pointer text-sm underline">Ajouter une personne</summary>
+                <ActionForm action={addMemberAction} submitLabel="Ajouter" className="mt-2 space-y-2">
+                  <input type="hidden" name="dossier" value={id} />
+                  <Field label="Code" hint="C = conjoint, E1, E2… = enfants, G = garant">
+                    <input name="person_code" required pattern="C|G|E[1-9][0-9]?" className={inputClass} />
+                  </Field>
+                  <Field label="Prénom"><input name="first_name" required className={inputClass} /></Field>
+                  <Field label="Nom"><input name="last_name" required className={inputClass} /></Field>
+                  <Field label="Date de naissance"><input type="date" name="birth_date" className={inputClass} /></Field>
+                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="accompanying" defaultChecked /> Accompagne le demandeur</label>
+                </ActionForm>
+              </details>
+            )}
+          </Card>
+
+          {sessionList.length > 0 && (
+            <Card title="Temps passé">
+              <p className="text-sm">
+                Payé : <strong>{formatDuration(totalMs((s) => s.billable))}</strong>
+                {" · "}validé : {formatDuration(totalMs((s) => s.billable && s.validated))}
+                {" · "}non payé : {formatDuration(totalMs((s) => !s.billable))}
+              </p>
+              <ul className="mt-2 max-h-60 space-y-1 overflow-y-auto text-xs">
+                {sessionList.map((s) => (
+                  <li key={s.id}>
+                    {formatDateTime(s.started_at)} · {s.ended_at ? formatDuration(new Date(s.ended_at).getTime() - new Date(s.started_at).getTime()) : "en cours"}
+                    {" · "}statut {pad2(s.status_at_start)}{s.billable ? "" : " (non payé)"}
+                    {s.corrected ? " · corrigée" : ""}{s.validated ? " · validée" : ""}
+                    {s.end_reason === "inactivite" ? " · arrêt pour inactivité" : ""}
+                  </li>
+                ))}
+              </ul>
+              {isManager && d.status >= 60 && d.status !== 99 && (
+                <div className="mt-3">
+                  <ActionForm action={validateHoursAction} submitLabel="Valider les heures" variant="secondary">
+                    <input type="hidden" name="dossier" value={id} />
+                  </ActionForm>
+                </div>
+              )}
+              {actorCan(profile, d, ["GBR", "ADM"]) && (
+                <details className="mt-3">
+                  <summary className="cursor-pointer text-sm underline">Corriger une session</summary>
+                  <ActionForm action={correctSessionAction} submitLabel="Corriger" className="mt-2 space-y-2">
+                    <input type="hidden" name="dossier" value={id} />
+                    <Field label="Session">
+                      <select name="session" required className={inputClass}>
+                        {sessionList.filter((s) => s.ended_at).map((s) => (
+                          <option key={s.id} value={s.id}>{formatDateTime(s.started_at)} → {formatDateTime(s.ended_at)}</option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Début (heure UTC)"><input type="datetime-local" name="started" required className={inputClass} /></Field>
+                    <Field label="Fin (heure UTC)"><input type="datetime-local" name="ended" required className={inputClass} /></Field>
+                    <Field label="Motif"><input name="reason" required className={inputClass} /></Field>
+                  </ActionForm>
+                </details>
+              )}
+            </Card>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ChecklistForm({
+  dossierId, level, items, submitLabel, withReasons,
+}: { dossierId: string; level: "auto" | "controle"; items: ChecklistItem[]; submitLabel: string; withReasons?: boolean }) {
+  return (
+    <ActionForm action={submitReviewAction} submitLabel={submitLabel}>
+      <input type="hidden" name="dossier" value={dossierId} />
+      <input type="hidden" name="level" value={level} />
+      <ol className="space-y-3">
+        {items.map((i) => (
+          <li key={i.id} className="text-sm">
+            <p className="font-medium">{i.label}</p>
+            <div className="mt-1 flex flex-wrap gap-4">
+              {[["conforme", "Conforme"], ["non_conforme", "Non conforme"], ["sans_objet", "Sans objet"]].map(([v, l]) => (
+                <label key={v} className="flex items-center gap-1">
+                  <input type="radio" name={`item_${i.id}`} value={v} required /> {l}
+                </label>
+              ))}
+            </div>
+            {level === "controle" && <input name={`comment_${i.id}`} placeholder="Remarque (facultatif)" className={`${inputClass} mt-1`} />}
+          </li>
+        ))}
+      </ol>
+      {withReasons && (
+        <fieldset className="text-sm">
+          <legend className="font-medium">En cas de renvoi : motif(s)</legend>
+          <div className="mt-1 flex flex-wrap gap-4">
+            {Object.entries(RETURN_REASONS).map(([code, label]) => (
+              <label key={code} className="flex items-center gap-1"><input type="checkbox" name="reason_codes" value={code} /> {label}</label>
+            ))}
+          </div>
+        </fieldset>
+      )}
+      <Field label={withReasons ? "Commentaire (obligatoire en cas de renvoi)" : "Commentaire (facultatif)"}>
+        <textarea name="comment" rows={2} className={inputClass} />
+      </Field>
+    </ActionForm>
+  );
+}
+
+function AssignForm({
+  dossier, role, label, agents, reasonRequired,
+}: { dossier: Dossier; role: "TRT" | "COL" | "CTL"; label: string; agents: StaffEntry[]; reasonRequired: boolean }) {
+  return (
+    <ActionForm action={assignAction} submitLabel={reasonRequired ? "Réassigner" : "Assigner"} variant="secondary" className="space-y-2">
+      <input type="hidden" name="dossier" value={dossier.id} />
+      <input type="hidden" name="role" value={role} />
+      <Field label={label} hint={role === "TRT" ? `Seuls les agents certifiés ${dossier.program_code} sont proposés.` : undefined}>
+        <select name="agent" required className={inputClass} defaultValue="">
+          <option value="" disabled>Choisir…</option>
+          {agents.map((a) => <option key={a.id} value={a.id}>{a.agent_code} · {a.full_name}</option>)}
+        </select>
+      </Field>
+      {reasonRequired && <Field label="Motif"><input name="reason" required className={inputClass} /></Field>}
+    </ActionForm>
+  );
+}
+
