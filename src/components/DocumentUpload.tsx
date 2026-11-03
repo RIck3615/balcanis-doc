@@ -65,7 +65,7 @@ export function DocumentUpload({ dossierId, members, categories, types }: Props)
     router.refresh();
   }
 
-  const input = "w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm";
+  const input = "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy/15";
   return (
     <form onSubmit={onSubmit} className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
@@ -106,10 +106,10 @@ export function DocumentUpload({ dossierId, members, categories, types }: Props)
         <input type="file" required accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="text-sm" />
       </label>
       <div className="flex flex-wrap items-center gap-3">
-        <button disabled={pending || !file || !type} className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50">
+        <button disabled={pending || !file || !type} className="rounded-lg bg-navy px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-navy-dark disabled:opacity-50">
           {pending ? "Envoi…" : "Déposer la pièce"}
         </button>
-        {message?.error && <p className="text-sm text-red-700">{message.error}</p>}
+        {message?.error && <p className="text-sm text-brand-red-dark">{message.error}</p>}
         {message?.ok && <p className="text-sm text-emerald-700">{message.ok}</p>}
       </div>
     </form>

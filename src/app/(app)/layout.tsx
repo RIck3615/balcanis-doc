@@ -1,44 +1,63 @@
-import Link from "next/link";
+import Image from "next/image";
 import { getProfile, hasRole } from "@/lib/auth";
 import { ROLE_LABELS } from "@/lib/labels";
 import { signOut } from "@/app/actions";
+import { Nav, type NavItem } from "@/components/Nav";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const profile = await getProfile();
-  const links: { href: string; label: string; show: boolean }[] = [
-    { href: "/", label: "Tableau de bord", show: true },
-    { href: "/dossiers", label: "Dossiers", show: true },
-    { href: "/dossiers/nouveau", label: "Ouvrir un dossier", show: hasRole(profile, "GBR", "CHF", "ADM") },
-    { href: "/controle", label: "File de contrôle", show: hasRole(profile, "CTL") },
-    { href: "/heures", label: "Heures et paie", show: hasRole(profile, "TRT", "GBR", "CHF", "ADM") },
-    { href: "/admin/agents", label: "Agents", show: hasRole(profile, "ADM", "CHF") },
-    { href: "/profil", label: "Mon profil", show: true },
+  const items: (NavItem & { show: boolean })[] = [
+    { href: "/", label: "Tableau de bord", icon: "home", show: true },
+    { href: "/dossiers", label: "Dossiers", icon: "folder", show: true },
+    { href: "/dossiers/nouveau", label: "Ouvrir un dossier", icon: "plus", show: hasRole(profile, "GBR", "CHF", "ADM") },
+    { href: "/controle", label: "File de contrôle", icon: "check", show: hasRole(profile, "CTL") },
+    { href: "/heures", label: "Heures et paie", icon: "clock", show: hasRole(profile, "TRT", "GBR", "CHF", "ADM") },
+    { href: "/admin/agents", label: "Agents", icon: "users", show: hasRole(profile, "ADM", "CHF") },
+    { href: "/profil", label: "Mon profil", icon: "user", show: true },
   ];
+  const initials = (profile.full_name || profile.email)
+    .split(/[\s@.]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]!.toUpperCase())
+    .join("");
 
   return (
-    <div className="min-h-screen md:flex">
-      <aside className="border-b border-slate-200 bg-white md:min-h-screen md:w-60 md:border-b-0 md:border-r">
-        <div className="p-4">
-          <p className="text-xs font-semibold tracking-widest text-slate-500">BALCANIS</p>
-          <p className="text-sm font-semibold">Gestion des dossiers</p>
+    <div className="min-h-screen bg-surface md:flex">
+      <aside className="border-b border-slate-200 bg-white md:sticky md:top-0 md:flex md:h-screen md:w-64 md:shrink-0 md:flex-col md:border-b-0 md:border-r">
+        <div className="flex items-center gap-3 px-5 py-5">
+          <Image src="/logo-mark.png" alt="" width={40} height={40} priority />
+          <div className="leading-tight">
+            <p className="text-lg font-bold tracking-tight text-navy">
+              Bal<span className="text-brand-red">CAN</span>
+            </p>
+            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">Gestion des dossiers</p>
+          </div>
         </div>
-        <nav className="flex gap-1 overflow-x-auto px-2 pb-2 md:flex-col md:pb-0">
-          {links.filter((l) => l.show).map((l) => (
-            <Link key={l.href} href={l.href} className="whitespace-nowrap rounded-md px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-100">
-              {l.label}
-            </Link>
-          ))}
-        </nav>
-        <div className="hidden border-t border-slate-200 p-4 text-xs text-slate-600 md:mt-6 md:block">
-          <p className="font-medium text-slate-900">{profile.full_name || profile.email}</p>
-          <p className="font-mono">{profile.agent_code ?? "sans code"}</p>
-          <p className="mt-1">{profile.roles.map((r) => ROLE_LABELS[r]).join(", ") || "Aucun rôle : contactez l'administrateur"}</p>
-          <form action={signOut} className="mt-3">
-            <button className="text-slate-700 underline">Se déconnecter</button>
-          </form>
+        <Nav items={items.filter((i) => i.show)} />
+        <div className="mt-auto hidden p-3 md:block">
+          <div className="rounded-2xl bg-surface p-3">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-navy text-sm font-semibold text-white">{initials}</span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-slate-900">{profile.full_name || profile.email}</p>
+                <p className="font-mono text-xs text-slate-500">{profile.agent_code ?? "Sans code agent"}</p>
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-slate-600">
+              {profile.roles.map((r) => ROLE_LABELS[r]).join(", ") || "Aucun rôle pour l'instant"}
+            </p>
+            <form action={signOut} className="mt-3">
+              <button className="w-full rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-navy ring-1 ring-inset ring-slate-200 transition hover:bg-navy-light">
+                Se déconnecter
+              </button>
+            </form>
+          </div>
         </div>
       </aside>
-      <main className="flex-1 p-4 md:p-8">{children}</main>
+      <main className="min-w-0 flex-1 px-4 py-6 md:px-10 md:py-8">
+        <div className="mx-auto max-w-7xl">{children}</div>
+      </main>
     </div>
   );
 }

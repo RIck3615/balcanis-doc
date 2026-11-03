@@ -12,7 +12,7 @@ export function OpenDocumentButton({ documentId, label = "Ouvrir" }: { documentI
       <button
         type="button"
         disabled={pending}
-        className="text-sm text-slate-900 underline disabled:opacity-50"
+        className="rounded-md px-2 py-1 text-sm font-medium text-navy ring-1 ring-inset ring-slate-200 transition hover:bg-navy-light disabled:opacity-50"
         onClick={async () => {
           setPending(true);
           setError(null);
@@ -28,7 +28,7 @@ export function OpenDocumentButton({ documentId, label = "Ouvrir" }: { documentI
       >
         {label}
       </button>
-      {error && <span className="ml-2 text-xs text-red-700">{error}</span>}
+      {error && <span className="ml-2 text-xs text-brand-red-dark">{error}</span>}
     </span>
   );
 }

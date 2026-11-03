@@ -11,6 +11,7 @@ export interface Profile {
   hourly_rate: number | null;
   timezone: string;
   active: boolean;
+  available: boolean;
 }
 
 export interface AgentPayment {
@@ -31,6 +32,7 @@ export interface StaffEntry {
   office_code: string | null;
   certified_programs: string[];
   active: boolean;
+  available: boolean;
 }
 
 export interface Program {

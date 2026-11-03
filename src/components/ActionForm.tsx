@@ -2,20 +2,15 @@
 
 import { useActionState } from "react";
 import type { ActionResult } from "@/app/actions";
+import { buttonClass } from "./ui";
 
 type Props = {
   action: (prev: ActionResult, fd: FormData) => Promise<ActionResult>;
   children: React.ReactNode;
   submitLabel: string;
   className?: string;
-  variant?: "primary" | "secondary" | "danger";
+  variant?: keyof typeof buttonClass;
   confirmMessage?: string;
-};
-
-const VARIANTS = {
-  primary: "bg-slate-900 text-white hover:bg-slate-700",
-  secondary: "bg-white text-slate-900 ring-1 ring-slate-300 hover:bg-slate-50",
-  danger: "bg-red-700 text-white hover:bg-red-600",
 };
 
 // Formulaire relié à une action serveur, avec message d'erreur ou de succès
@@ -24,7 +19,7 @@ export function ActionForm({ action, children, submitLabel, className, variant =
   return (
     <form
       action={formAction}
-      className={className ?? "space-y-3"}
+      className={className ?? "space-y-4"}
       onSubmit={(e) => {
         if (confirmMessage && !window.confirm(confirmMessage)) e.preventDefault();
       }}
@@ -34,12 +29,12 @@ export function ActionForm({ action, children, submitLabel, className, variant =
         <button
           type="submit"
           disabled={pending}
-          className={`rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50 ${VARIANTS[variant]}`}
+          className={`rounded-lg px-4 py-2 text-sm font-medium transition disabled:opacity-50 ${buttonClass[variant]}`}
         >
-          {pending ? "…" : submitLabel}
+          {pending ? "Un instant…" : submitLabel}
         </button>
-        {state?.error && <p className="text-sm text-red-700">{state.error}</p>}
-        {state?.ok && <p className="text-sm text-emerald-700">{state.ok}</p>}
+        {state?.error && <p className="rounded-lg bg-brand-red-light px-3 py-1.5 text-sm text-brand-red-dark">{state.error}</p>}
+        {state?.ok && <p className="rounded-lg bg-emerald-50 px-3 py-1.5 text-sm text-emerald-700">{state.ok}</p>}
       </div>
     </form>
   );

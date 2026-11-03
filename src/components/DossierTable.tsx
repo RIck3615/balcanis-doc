@@ -1,41 +1,50 @@
 import Link from "next/link";
 import type { DossierWithClient } from "@/lib/types";
-import { StatusBadge } from "./ui";
+import { Empty, StatusBadge } from "./ui";
 import { daysSince } from "@/lib/labels";
 
 export function DossierTable({ dossiers, empty }: { dossiers: DossierWithClient[]; empty?: string }) {
-  if (dossiers.length === 0) return <p className="text-sm text-slate-500">{empty ?? "Aucun dossier."}</p>;
+  if (dossiers.length === 0) return <Empty>{empty ?? "Aucun dossier."}</Empty>;
   return (
-    <div className="overflow-x-auto">
+    <div className="-mx-5 overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
-            <th className="py-2 pr-3">Dossier</th>
-            <th className="py-2 pr-3">Client</th>
-            <th className="py-2 pr-3">Statut</th>
-            <th className="py-2 pr-3 text-right">Dans ce statut</th>
-            <th className="py-2 text-right">Renvois</th>
+          <tr className="border-y border-slate-100 bg-surface/60 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+            <th className="px-5 py-2.5">Dossier</th>
+            <th className="px-3 py-2.5">Client</th>
+            <th className="px-3 py-2.5">Statut</th>
+            <th className="px-3 py-2.5 text-right">Dans ce statut</th>
+            <th className="px-5 py-2.5 text-right">Renvois</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="divide-y divide-slate-100">
           {dossiers.map((d) => {
             const days = daysSince(d.status_changed_at);
+            const late = days >= 7 && d.status < 80;
             return (
-              <tr key={d.id} className="border-b border-slate-100 hover:bg-slate-50">
-                <td className="py-2 pr-3">
-                  <Link href={`/dossiers/${d.id}`} className="font-mono text-slate-900 underline-offset-2 hover:underline">
+              <tr key={d.id} className="transition hover:bg-navy-light/40">
+                <td className="px-5 py-3">
+                  <Link href={`/dossiers/${d.id}`} className="font-mono text-[13px] font-medium text-navy hover:text-brand-red">
                     {d.number}
                   </Link>
                 </td>
-                <td className="py-2 pr-3">
-                  {d.clients ? `${d.clients.last_name} ${d.clients.first_name}` : "—"}
-                  <span className="ml-2 font-mono text-xs text-slate-500">{d.clients?.client_code}</span>
+                <td className="px-3 py-3">
+                  {d.clients ? (
+                    <>
+                      <span className="font-medium text-slate-900">{d.clients.last_name}</span> {d.clients.first_name}
+                      <span className="ml-2 font-mono text-xs text-slate-400">{d.clients.client_code}</span>
+                    </>
+                  ) : (
+                    <span className="text-slate-400">Client inconnu</span>
+                  )}
                 </td>
-                <td className="py-2 pr-3"><StatusBadge status={d.status} /></td>
-                <td className={`py-2 pr-3 text-right tabular-nums ${days >= 7 && d.status < 80 ? "font-semibold text-red-700" : ""}`}>
-                  {days} j
+                <td className="px-3 py-3"><StatusBadge status={d.status} /></td>
+                <td className="px-3 py-3 text-right tabular-nums">
+                  <span className={late ? "rounded-full bg-brand-red-light px-2 py-0.5 font-semibold text-brand-red-dark" : "text-slate-600"}>
+                    {days} j
+                  </span>
                 </td>
-                <td className="py-2 text-right tabular-nums">{d.return_count}</td>
+                <td className="px-5 py-3 text-right tabular-nums text-slate-600">{d.return_count}</td>
               </tr>
             );
           })}

@@ -2,7 +2,7 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ActionForm } from "@/components/ActionForm";
 import { Card, Field, PageTitle, inputClass } from "@/components/ui";
-import { adminSetProfileAction, approvePaymentAction } from "@/app/actions";
+import { adminSetProfileAction, approvePaymentAction, setAvailabilityAction } from "@/app/actions";
 import { ROLE_LABELS } from "@/lib/labels";
 import type { AgentPayment, AppRole, Profile } from "@/lib/types";
 
@@ -21,11 +21,25 @@ export default async function AgentsPage() {
 
   return (
     <div className="space-y-4">
-      <PageTitle sub="Les comptes se créent dans Supabase (Authentication > Users > Invite). Ils apparaissent ici sans rôle ; attribuez-les ci-dessous. Le code agent est généré au premier rôle, selon le premier rôle coché.">
+      <PageTitle eyebrow="Administration" sub="Les comptes se créent dans Supabase (Authentication > Users > Invite). Ils apparaissent ici sans rôle ; attribuez-les ci-dessous. Le code agent est généré au premier rôle, selon le premier rôle coché.">
         Agents
       </PageTitle>
       {list.map((p) => (
-        <Card key={p.id} title={`${p.agent_code ?? "Sans code"} · ${p.full_name || p.email}${p.active ? "" : " (inactif)"}`}>
+        <Card
+          key={p.id}
+          title={`${p.agent_code ?? "Sans code"} · ${p.full_name || p.email}${p.active ? "" : " (inactif)"}`}
+          actions={
+            p.roles.includes("COL") ? (
+              <ActionForm action={setAvailabilityAction} submitLabel={p.available ? "Marquer indisponible" : "Marquer disponible"} variant="secondary" className="flex items-center gap-2">
+                <input type="hidden" name="user" value={p.id} />
+                <input type="hidden" name="available" value={p.available ? "false" : "true"} />
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${p.available ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
+                  {p.available ? "Disponible" : "Indisponible"}
+                </span>
+              </ActionForm>
+            ) : undefined
+          }
+        >
           <ActionForm action={adminSetProfileAction} submitLabel="Enregistrer" variant="secondary">
             <input type="hidden" name="user" value={p.id} />
             <div className="grid gap-3 sm:grid-cols-2">
@@ -34,7 +48,7 @@ export default async function AgentsPage() {
               <Field label="Bureau (pour COL et GBR)">
                 <select name="office" defaultValue={p.office_code ?? ""} className={inputClass}>
                   <option value="">Aucun (agent à distance)</option>
-                  {(offices ?? []).map((o) => <option key={o.code} value={o.code}>{o.code} — {o.name}</option>)}
+                  {(offices ?? []).map((o) => <option key={o.code} value={o.code}>{o.code} · {o.name}</option>)}
                 </select>
               </Field>
               <Field label="Taux horaire (CAD, agents de traitement)">

@@ -29,14 +29,14 @@ export const STATUS_LABELS: Record<number, string> = {
 
 // Couleur par phase : collecte, traitement, contrôle, chef, terminé, retour
 export function statusTone(status: number): string {
-  if (status === 55 || status === 75) return "bg-amber-100 text-amber-900 ring-amber-300";
-  if (status === 35) return "bg-orange-100 text-orange-900 ring-orange-300";
-  if (status === 99) return "bg-zinc-100 text-zinc-600 ring-zinc-300";
-  if (status >= 80) return "bg-emerald-100 text-emerald-900 ring-emerald-300";
-  if (status >= 60) return "bg-violet-100 text-violet-900 ring-violet-300";
-  if (status >= 40) return "bg-sky-100 text-sky-900 ring-sky-300";
-  if (status >= 20) return "bg-indigo-100 text-indigo-900 ring-indigo-300";
-  return "bg-slate-100 text-slate-800 ring-slate-300";
+  if (status === 55 || status === 75) return "bg-amber-50 text-amber-800 ring-amber-200";
+  if (status === 35) return "bg-orange-50 text-orange-800 ring-orange-200";
+  if (status === 99) return "bg-slate-100 text-slate-500 ring-slate-200";
+  if (status >= 80) return "bg-emerald-50 text-emerald-800 ring-emerald-200";
+  if (status >= 60) return "bg-brand-red-light text-brand-red-dark ring-brand-red/20";
+  if (status >= 40) return "bg-sky-50 text-sky-800 ring-sky-200";
+  if (status >= 20) return "bg-navy-light text-navy ring-navy/15";
+  return "bg-slate-50 text-slate-700 ring-slate-200";
 }
 
 export const PERSON_LABELS: Record<string, string> = {
@@ -64,7 +64,7 @@ export function pad2(n: number): string {
 }
 
 export function formatDateTime(value: string | null | undefined): string {
-  if (!value) return "—";
+  if (!value) return "Non renseigné";
   return new Intl.DateTimeFormat("fr-CA", {
     dateStyle: "medium",
     timeStyle: "short",
@@ -72,7 +72,7 @@ export function formatDateTime(value: string | null | undefined): string {
 }
 
 export function formatDate(value: string | null | undefined): string {
-  if (!value) return "—";
+  if (!value) return "Non renseignée";
   return new Intl.DateTimeFormat("fr-CA", { dateStyle: "medium" }).format(new Date(value));
 }
 

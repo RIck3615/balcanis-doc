@@ -52,9 +52,9 @@ export default async function DossierPage({ params }: { params: Promise<{ id: st
 
   const staffList = (staff ?? []) as StaffEntry[];
   const nameOf = (uid: string | null) => {
-    if (!uid) return "—";
+    if (!uid) return "Non assigné";
     const s = staffList.find((x) => x.id === uid);
-    return s ? `${s.agent_code ?? ""} · ${s.full_name}` : "—";
+    return s ? `${s.agent_code ?? ""} · ${s.full_name}` : "Inconnu";
   };
   const memberList = (members ?? []) as Member[];
   const docList = (documents ?? []) as DocumentRow[];
@@ -86,28 +86,42 @@ export default async function DossierPage({ params }: { params: Promise<{ id: st
     sessionList.filter((s) => s.ended_at && filter(s)).reduce((acc, s) => acc + (new Date(s.ended_at!).getTime() - new Date(s.started_at).getTime()), 0);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* En-tête */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="font-mono text-xl font-semibold">{d.number}</p>
-          <p className="text-sm text-slate-600">
-            {d.program_code} — {program?.name} · Bureau {d.office_code} · ouvert le {formatDate(d.opened_at)}
-          </p>
-          <p className="text-sm text-slate-600">
-            Client : {(client as Client | null) ? `${client!.last_name} ${client!.first_name}` : "—"}{" "}
-            <span className="font-mono text-xs">{client?.client_code}</span>
-          </p>
+      <section className="relative overflow-hidden rounded-2xl bg-navy p-6 text-white shadow-sm">
+        <div className="absolute -right-16 -top-20 h-64 w-64 rounded-full border-[28px] border-white/5" aria-hidden />
+        <div className="absolute -bottom-24 right-24 h-48 w-48 rounded-full border-[24px] border-brand-red/25" aria-hidden />
+        <div className="relative flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/60">
+              {d.program_code} · {program?.name}
+            </p>
+            <p className="mt-1 font-mono text-2xl font-semibold tracking-tight">{d.number}</p>
+            <p className="mt-2 text-sm text-white/80">
+              {client ? (
+                <>
+                  <span className="font-semibold text-white">{(client as Client).last_name}</span> {(client as Client).first_name}
+                  <span className="ml-2 font-mono text-xs text-white/60">{(client as Client).client_code}</span>
+                </>
+              ) : (
+                "Client inconnu"
+              )}
+              <span className="mx-2 text-white/40">|</span>Bureau {d.office_code}
+              <span className="mx-2 text-white/40">|</span>Ouvert le {formatDate(d.opened_at)}
+            </p>
+          </div>
+          <div className="text-right">
+            <span className="rounded-full bg-white p-0.5 inline-block"><StatusBadge status={d.status} /></span>
+            <p className="mt-2 text-xs text-white/70">depuis le {formatDateTime(d.status_changed_at)}</p>
+            {d.return_count > 0 && (
+              <p className="mt-1 inline-block rounded-full bg-brand-red px-2.5 py-0.5 text-xs font-medium">{d.return_count} renvoi(s)</p>
+            )}
+          </div>
         </div>
-        <div className="text-right">
-          <StatusBadge status={d.status} />
-          <p className="mt-1 text-xs text-slate-500">depuis le {formatDateTime(d.status_changed_at)}</p>
-          {d.return_count > 0 && <p className="text-xs text-amber-800">{d.return_count} renvoi(s)</p>}
-        </div>
-      </div>
+      </section>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="space-y-4 lg:col-span-2">
+      <div className="grid gap-5 lg:grid-cols-3">
+        <div className="space-y-5 lg:col-span-2">
           {/* Personnes assignées */}
           <Card title="Intervenants">
             <dl className="grid gap-2 text-sm sm:grid-cols-3">
@@ -164,7 +178,10 @@ export default async function DossierPage({ params }: { params: Promise<{ id: st
                 const older = inCat.filter((doc) => !doc.is_current);
                 return (
                   <div key={c.code}>
-                    <p className="font-mono text-xs font-semibold text-slate-500">{d.number}/{c.folder}</p>
+                    <p className="flex items-center gap-2 font-mono text-xs font-semibold text-navy">
+                      <svg viewBox="0 0 24 24" className="h-4 w-4 text-brand-red" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4.6l2 2.5h8.4A1.5 1.5 0 0 1 21 9v9.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5z" /></svg>
+                      {c.folder}
+                    </p>
                     <ul className="mt-1 divide-y divide-slate-100">
                       {current.map((doc) => (
                         <li key={doc.id} className="flex flex-wrap items-center justify-between gap-2 py-1.5 text-sm">
@@ -225,12 +242,13 @@ export default async function DossierPage({ params }: { params: Promise<{ id: st
 
           {/* Journal */}
           <Card title="Journal du dossier">
-            <ol className="max-h-96 space-y-1 overflow-y-auto text-xs">
+            <ol className="max-h-96 space-y-2 overflow-y-auto border-l-2 border-navy-light pl-4 text-xs">
               {((audit ?? []) as AuditEntry[]).map((a) => (
-                <li key={a.id} className="flex gap-2">
+                <li key={a.id} className="relative flex flex-wrap gap-x-2">
+                  <span className="absolute -left-[21px] top-1 h-2 w-2 rounded-full bg-navy" aria-hidden />
                   <span className="shrink-0 text-slate-500 tabular-nums">{formatDateTime(a.created_at)}</span>
-                  <span className="shrink-0 font-mono">{a.actor_code ?? "système"}</span>
-                  <span>{a.action}{a.reason ? ` — ${a.reason}` : ""}</span>
+                  <span className="shrink-0 font-mono font-medium text-navy">{a.actor_code ?? "système"}</span>
+                  <span>{a.action}{a.reason ? <span className="text-slate-500"> : {a.reason}</span> : null}</span>
                 </li>
               ))}
             </ol>
@@ -238,7 +256,7 @@ export default async function DossierPage({ params }: { params: Promise<{ id: st
         </div>
 
         {/* Colonne de droite : actions */}
-        <div className="space-y-4">
+        <div className="space-y-5">
           {simpleTransitions.length > 0 && (
             <Card title="Actions">
               <div className="space-y-4">
@@ -246,7 +264,7 @@ export default async function DossierPage({ params }: { params: Promise<{ id: st
                   <ActionForm
                     key={t.to_status}
                     action={transitionAction}
-                    submitLabel={`→ ${pad2(t.to_status)} ${STATUS_LABELS[t.to_status]}`}
+                    submitLabel={t.to_status === 99 ? "Annuler le dossier" : `Passer à « ${STATUS_LABELS[t.to_status]} »`}
                     variant={t.to_status === 99 ? "danger" : "primary"}
                     confirmMessage={t.to_status === 99 ? "Annuler définitivement ce dossier ?" : undefined}
                   >

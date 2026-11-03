@@ -18,7 +18,7 @@ export default async function ControlePage() {
 
   return (
     <div className="space-y-4">
-      <PageTitle sub="Les dossiers que vous avez traités n'apparaissent jamais ici.">File de contrôle</PageTitle>
+      <PageTitle eyebrow="Contrôle" sub="Les dossiers que vous avez traités n'apparaissent jamais ici.">File de contrôle</PageTitle>
       <Card title={`Mes contrôles en cours (${mine.length})`}>
         <DossierTable dossiers={mine} empty="Aucun contrôle en cours." />
       </Card>

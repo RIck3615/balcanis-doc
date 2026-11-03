@@ -39,14 +39,14 @@ export default async function HeuresPage({ searchParams }: { searchParams: Promi
 
   return (
     <div className="space-y-4">
-      <PageTitle sub="Seules les heures validées (après acceptation au contrôle) sont payées. Le temps de correction (statut 55) est mesuré mais non payé.">
+      <PageTitle eyebrow="Temps" sub="Seules les heures validées (après acceptation au contrôle) sont payées. Le temps de correction (statut 55) est mesuré mais non payé.">
         Heures et paie
       </PageTitle>
       <form className="flex items-end gap-2">
         <input type="month" name="mois" defaultValue={month} className={`${inputClass} max-w-xs`} />
-        <button className="rounded-md bg-slate-900 px-3 py-1.5 text-sm text-white">Afficher</button>
+        <button className="rounded-lg bg-navy px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-navy-dark">Afficher</button>
       </form>
-      {error && <p className="text-sm text-red-700">{error.message}</p>}
+      {error && <p className="text-sm text-brand-red-dark">{error.message}</p>}
       {byAgent.size === 0 && <p className="text-sm text-slate-500">Aucune heure pour ce mois.</p>}
       {[...byAgent.entries()].map(([agentId, a]) => (
         <Card key={agentId} title={`${a.code} · ${a.name}`}>

@@ -47,7 +47,7 @@ export async function createDossierAction(_: ActionResult, fd: FormData): Promis
   const res = await rpc("create_dossier", {
     p_client: clientId,
     p_program: str(fd, "program"),
-    p_collector: str(fd, "collector"),
+    p_collector: optional(fd, "collector"), // vide = attribution automatique
     p_office: optional(fd, "office"),
   });
   if (res.error) return { error: res.error };
@@ -197,4 +197,14 @@ export async function updateMyPaymentAction(_: ActionResult, fd: FormData): Prom
   if (res.error) return { error: res.error };
   revalidatePath("/profil");
   return { ok: "Enregistré. L'administrateur doit confirmer avant le prochain paiement." };
+}
+
+export async function setAvailabilityAction(_: ActionResult, fd: FormData): Promise<ActionResult> {
+  const available = str(fd, "available") === "true";
+  const res = await rpc("set_availability", { p_user: optional(fd, "user"), p_available: available });
+  if (res.error) return { error: res.error };
+  revalidatePath("/profil");
+  revalidatePath("/admin/agents");
+  revalidatePath("/dossiers/nouveau");
+  return { ok: available ? "Marqué disponible" : "Marqué indisponible" };
 }

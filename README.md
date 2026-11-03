@@ -1,8 +1,8 @@
-# BalCanis — Plateforme de gestion des dossiers
+# BalCanis : Plateforme de gestion des dossiers
 
 Application web du cabinet d'immigration BalCanis : collecte des pièces au bureau, traitement par des agents à distance payés à l'heure, contrôle par une autre personne, validation et soumission par le chef du cabinet, avec un journal d'audit inaltérable.
 
-Elle met en œuvre le document « Plateforme BalCanis — Cadrage fonctionnel de la gestion des dossiers ».
+Elle met en œuvre le document « Plateforme BalCanis : Cadrage fonctionnel de la gestion des dossiers ».
 
 **Technologies** : Next.js 15 (App Router, TypeScript, Tailwind) et Supabase (PostgreSQL, authentification, stockage des fichiers).
 
@@ -10,7 +10,7 @@ Elle met en œuvre le document « Plateforme BalCanis — Cadrage fonctionnel de
 
 | Module | Contenu |
 | --- | --- |
-| Clients et dossiers | Numéros générés (`CL-2026-000187`, `BC-KIN-2026-00042-PE`), membres du dossier (P, C, E1…, G), référentiel des programmes avec dates d'ouverture et de fermeture |
+| Clients et dossiers | Attribution automatique de l'agent de collecte (disponible et le moins chargé du bureau), numéros générés (`CL-2026-000187`, `BC-KIN-2026-00042-PE`), membres du dossier (P, C, E1…, G), référentiel des programmes avec dates d'ouverture et de fermeture |
 | Pièces | Dépôt depuis le navigateur ; le système génère le nom (`BC-KIN-2026-00042_P_01_PASSEPORT_20261101_v01.pdf`) et le sous-dossier (`01_IDENTITE`). Versions conservées, pièces obligatoires manquantes affichées |
 | Circuit | Statuts 00 à 99, transitions autorisées par rôle, motif obligatoire pour les retours, réassignations et annulations |
 | Contrôle qualité | Auto-vérification par l'agent de traitement, liste de contrôle par le contrôleur, renvois numérotés (`…-R01`) avec motifs. Le contrôleur ne peut jamais être le traitant |
@@ -37,6 +37,8 @@ Elle met en œuvre le document « Plateforme BalCanis — Cadrage fonctionnel de
    Avec la CLI Supabase : `supabase link --project-ref VOTRE_REF` puis `supabase db push`.
 3. Dans **Authentication > Providers**, gardez seulement « Email » et désactivez les inscriptions publiques (**Allow new users to sign up** : non). Les comptes sont créés par invitation.
 4. Activez l'authentification à deux facteurs (**Authentication > Multi-Factor**) : c'est une exigence du cadrage.
+
+**Mise à jour d'une base déjà installée** : exécutez seulement les nouvelles migrations, dans l'ordre (par exemple `0006_auto_assign_collector.sql`).
 
 ### 2. Désigner le premier administrateur
 

@@ -165,4 +165,30 @@ select test.as_user('chef@balcanis.test');
 select public.approve_payment((select id from auth.users where email = 'trt@balcanis.test'));
 select pending from public.agent_payments;
 select action, after ? 'details' as coordonnees_dans_journal from public.audit_log where object_type = 'agent_payments';
+-- Attribution automatique de l'agent de collecte (0006)
+reset role;
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('00000000-0000-0000-0000-000000000007', 'col2@balcanis.test', '{"full_name":"Agent collecte 2"}');
+set role authenticated;
+select test.as_user('chef@balcanis.test');
+select (public.admin_set_profile(id, null, '{COL}', 'KIN', '{}', null, true)).agent_code from auth.users where email = 'col2@balcanis.test';
+select test.as_user('gbr@balcanis.test');
+-- COL-0001 a déjà eu un dossier, COL-0002 aucun : le nouveau dossier va à COL-0002
+insert into ctx select 'auto1', public.create_dossier((select v::uuid from ctx where k = 'client'), 'PE');
+select p.agent_code as attribue_a from public.dossiers d join public.profiles p on p.id = d.collector_id where d.id = (select v::uuid from ctx where k = 'auto1');
+-- COL-0002 a maintenant 1 dossier en collecte, COL-0001 aucun (son dossier est fermé) : retour à COL-0001
+insert into ctx select 'auto2', public.create_dossier((select v::uuid from ctx where k = 'client'), 'VR');
+select p.agent_code as attribue_a from public.dossiers d join public.profiles p on p.id = d.collector_id where d.id = (select v::uuid from ctx where k = 'auto2');
+-- COL-0001 se déclare indisponible : le dossier va à COL-0002 même s'il est plus chargé
+select test.as_user('col@balcanis.test');
+select public.set_availability(null, false);
+select test.as_user('gbr@balcanis.test');
+insert into ctx select 'auto3', public.create_dossier((select v::uuid from ctx where k = 'client'), 'PE');
+select p.agent_code as attribue_a from public.dossiers d join public.profiles p on p.id = d.collector_id where d.id = (select v::uuid from ctx where k = 'auto3');
+select reason from public.audit_log where action = 'dossier ouvert' order by id desc limit 1;
+-- personne de disponible : refus clair
+select test.as_user('col2@balcanis.test');
+select public.set_availability(null, false);
+select test.as_user('gbr@balcanis.test');
+select test.expect_error(format($$select public.create_dossier(%L, 'PE')$$, (select v from ctx where k = 'client')), 'Aucun agent de collecte disponible');
 select 'SCÉNARIO RÉUSSI' as resultat;
