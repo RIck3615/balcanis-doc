@@ -41,9 +41,16 @@ export function CreateAgentForm({ offices }: { offices: { code: string; name: st
     return (
       <div className="space-y-3">
         <Credentials email={state.email} password={state.password} />
-        <button onClick={() => window.location.reload()} className={`rounded-lg px-4 py-2 text-sm font-medium ${buttonClass.primary}`}>
-          Créer un autre agent
-        </button>
+        <div className="flex flex-wrap gap-3">
+          {state.userId && (
+            <a href={`/admin/agents/${state.userId}`} className={`rounded-lg px-4 py-2 text-sm font-medium ${buttonClass.primary}`}>
+              Voir la fiche de l&apos;agent
+            </a>
+          )}
+          <button onClick={() => window.location.reload()} className={`rounded-lg px-4 py-2 text-sm font-medium ${buttonClass.secondary}`}>
+            Créer un autre agent
+          </button>
+        </div>
       </div>
     );
   }
@@ -68,9 +75,9 @@ export function CreateAgentForm({ offices }: { offices: { code: string; name: st
       </div>
       <fieldset className="text-sm">
         <legend className="mb-1.5 font-medium text-slate-700">Rôles</legend>
-        <div className="flex flex-wrap gap-x-5 gap-y-2">
+        <div className="grid gap-2 sm:grid-cols-3">
           {ALL_ROLES.map((r) => (
-            <label key={r} className="flex items-center gap-1.5">
+            <label key={r} className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 transition hover:border-navy/40 has-[:checked]:border-navy has-[:checked]:bg-navy-light/50">
               <input type="checkbox" name="roles" value={r} className="accent-navy" /> {ROLE_LABELS[r]}
             </label>
           ))}

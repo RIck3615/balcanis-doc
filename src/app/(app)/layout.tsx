@@ -42,7 +42,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <p className="text-lg font-bold tracking-tight text-navy">
               Bal<span className="text-brand-red">CAN</span>
             </p>
-            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">Gestion des dossiers</p>
+            <p className="whitespace-nowrap text-[10px] font-medium uppercase tracking-[0.08em] text-slate-500">Gestion des dossiers</p>
           </div>
           <NotificationBell userId={profile.id} unread={unread ?? 0} />
         </div>

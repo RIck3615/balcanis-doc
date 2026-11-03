@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile, hasRole } from "@/lib/auth";
 
-export type ActionResult = { error?: string; ok?: string; password?: string; email?: string } | null;
+export type ActionResult = { error?: string; ok?: string; password?: string; email?: string; userId?: string } | null;
 
 function str(fd: FormData, key: string): string {
   return String(fd.get(key) ?? "").trim();
@@ -178,14 +178,14 @@ export async function adminSetProfileAction(_: ActionResult, fd: FormData): Prom
     p_active: fd.get("active") === "on",
   });
   if (res.error) return { error: res.error };
-  revalidatePath("/admin/agents");
+  revalidatePath("/admin/agents", "layout");
   return { ok: "Profil enregistré" };
 }
 
 export async function approvePaymentAction(_: ActionResult, fd: FormData): Promise<ActionResult> {
   const res = await rpc("approve_payment", { p_user: str(fd, "user") });
   if (res.error) return { error: res.error };
-  revalidatePath("/admin/agents");
+  revalidatePath("/admin/agents", "layout");
   return { ok: "Coordonnées confirmées" };
 }
 
@@ -205,7 +205,7 @@ export async function setAvailabilityAction(_: ActionResult, fd: FormData): Prom
   const res = await rpc("set_availability", { p_user: optional(fd, "user"), p_available: available });
   if (res.error) return { error: res.error };
   revalidatePath("/profil");
-  revalidatePath("/admin/agents");
+  revalidatePath("/admin/agents", "layout");
   revalidatePath("/dossiers/nouveau");
   return { ok: available ? "Marqué disponible" : "Marqué indisponible" };
 }
@@ -243,9 +243,9 @@ export async function createAgentAction(_: ActionResult, fd: FormData): Promise<
     p_hourly_rate: rate ? Number(rate.replace(",", ".")) : null,
   });
   if (error) return { error: error.message };
-  const row = (data as { agent_code: string; temporary_password: string }[])[0];
+  const row = (data as { user_id: string; agent_code: string; temporary_password: string }[])[0];
   revalidatePath("/admin/agents");
-  return { ok: `Agent ${row.agent_code} créé`, email: str(fd, "email").toLowerCase(), password: row.temporary_password };
+  return { ok: `Agent ${row.agent_code} créé`, email: str(fd, "email").toLowerCase(), password: row.temporary_password, userId: row.user_id };
 }
 
 // Nouveau mot de passe temporaire (agent qui a oublié le sien)
