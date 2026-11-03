@@ -1,6 +1,7 @@
 import { getProfile } from "@/lib/auth";
+import Link from "next/link";
 import { ActionForm } from "@/components/ActionForm";
-import { Card, Field, PageTitle, inputClass } from "@/components/ui";
+import { Card, Field, PageTitle, buttonClass, inputClass } from "@/components/ui";
 import { setAvailabilityAction, updateMyPaymentAction } from "@/app/actions";
 import { ROLE_LABELS } from "@/lib/labels";
 import { createClient } from "@/lib/supabase/server";
@@ -37,6 +38,11 @@ export default async function ProfilPage() {
           <div><dt className="text-xs text-slate-500">Bureau</dt><dd>{p.office_code ?? "À distance"}</dd></div>
           <div><dt className="text-xs text-slate-500">Programmes certifiés</dt><dd>{p.certified_programs.join(", ") || "Aucun"}</dd></div>
         </dl>
+      </Card>
+      <Card title="Sécurité">
+        <Link href="/mot-de-passe" className={`inline-block rounded-lg px-4 py-2 text-sm font-medium ${buttonClass.secondary}`}>
+          Changer mon mot de passe
+        </Link>
       </Card>
       <Card title="Paiement">
         <p className="mb-3 text-sm text-slate-600">

@@ -4,6 +4,7 @@ import { ActionForm } from "@/components/ActionForm";
 import { Card, Field, PageTitle, inputClass } from "@/components/ui";
 import { adminSetProfileAction, approvePaymentAction, setAvailabilityAction } from "@/app/actions";
 import { ROLE_LABELS } from "@/lib/labels";
+import { CreateAgentForm, ResetPasswordForm } from "@/components/AgentAccountForms";
 import type { AgentPayment, AppRole, Profile } from "@/lib/types";
 
 const ALL_ROLES: AppRole[] = ["TRT", "CTL", "COL", "GBR", "CHF", "ADM"];
@@ -21,9 +22,12 @@ export default async function AgentsPage() {
 
   return (
     <div className="space-y-4">
-      <PageTitle eyebrow="Administration" sub="Les comptes se créent dans Supabase (Authentication > Users > Invite). Ils apparaissent ici sans rôle ; attribuez-les ci-dessous. Le code agent est généré au premier rôle, selon le premier rôle coché.">
+      <PageTitle eyebrow="Administration" sub="Créez les comptes des agents, attribuez leurs rôles et gérez leur accès. Le code agent (ex. TRT-0003) est généré à partir du premier rôle coché.">
         Agents
       </PageTitle>
+      <Card title="Nouvel agent">
+        <CreateAgentForm offices={offices ?? []} />
+      </Card>
       {list.map((p) => (
         <Card
           key={p.id}
@@ -72,6 +76,12 @@ export default async function AgentsPage() {
               </div>
             </fieldset>
           </ActionForm>
+          <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4">
+            {p.must_change_password && (
+              <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800">Mot de passe temporaire, pas encore changé</span>
+            )}
+            <ResetPasswordForm userId={p.id} email={p.email} />
+          </div>
           {payOf(p.id) && (
             <div className="mt-3 rounded-md bg-slate-50 p-3 text-sm">
               <p>

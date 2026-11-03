@@ -205,4 +205,17 @@ select test.expect_error($$update public.notifications set read_at = now()$$, 'p
 select public.mark_notifications_read();
 select count(*) filter (where read_at is null) as non_lues_apres from public.notifications;
 select test.expect_error($$select public.notify(auth.uid(), null, 'x', 'y')$$, 'permission denied');
+-- Création d'agent (0008) : mot de passe temporaire à changer
+reset role;
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('00000000-0000-0000-0000-000000000008', 'nouveau@balcanis.test', '{"full_name":"Nouvel agent","must_change_password":true}');
+select full_name, must_change_password from public.profiles where email = 'nouveau@balcanis.test';
+set role authenticated;
+select test.as_user('nouveau@balcanis.test');
+select public.password_changed();
+select must_change_password from public.profiles where email = 'nouveau@balcanis.test';
+select test.expect_error(format($$select public.require_password_change(%L)$$, auth.uid()), 'rôle requis');
+select test.as_user('chef@balcanis.test');
+select public.require_password_change((select id from auth.users where email = 'nouveau@balcanis.test'));
+select must_change_password from public.profiles where email = 'nouveau@balcanis.test';
 select 'SCÉNARIO RÉUSSI' as resultat;

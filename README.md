@@ -18,7 +18,7 @@ Elle met en œuvre le document « Plateforme BalCanis : Cadrage fonctionnel de l
 | Temps et paie | Chronomètre par dossier, pause automatique après 10 minutes d'inactivité, temps du statut 55 mesuré mais non payé, validation des heures après le contrôle, corrections avec motif, relevé mensuel par agent |
 | Notifications | Cloche avec compteur en temps réel et fenêtre d'alerte : nouveau dossier à collecter, collecte complète à assigner, dossier assigné, information client à obtenir, prêt au contrôle, renvoi, validation finale, soumission, décision, annulation, coordonnées de paiement à confirmer, dossier bloqué depuis 7 jours |
 | Journal d'audit | Chaque action est enregistrée (qui, quand, avant/après, motif), y compris la consultation des pièces. Le journal ne peut être ni modifié ni effacé |
-| Agents | Rôles, bureau, programmes certifiés, taux horaire ; chaque agent choisit son moyen et sa fréquence de paiement, l'administrateur confirme |
+| Agents | Création des comptes par l'administrateur ou le chef (mot de passe temporaire à changer à la première connexion), réinitialisation du mot de passe, rôles, bureau, programmes certifiés, taux horaire ; chaque agent choisit son moyen et sa fréquence de paiement, l'administrateur confirme |
 
 **Pas encore fait** (phase 2) : portail client, module de formation et certification, tableaux de bord avancés, envoi des notifications par courriel ou WhatsApp, saisie des formulaires IRCC dans la plateforme, export comptable.
 
@@ -51,7 +51,9 @@ set roles = '{CHF,ADM}', office_code = 'KIN', agent_code = 'CHF-0001'
 where email = 'votre-courriel@exemple.com';
 ```
 
-Ensuite, tout se fait dans l'application : invitez les agents dans Supabase, puis attribuez leurs rôles dans **Agents**.
+Ensuite, tout se fait dans l'application : page **Agents > Nouvel agent**. Le système crée le compte avec un mot de passe temporaire, que vous transmettez à l'agent ; il doit choisir son propre mot de passe à sa première connexion.
+
+Pour que cette création fonctionne, ajoutez la clé **service_role** (Project Settings > API) dans `.env.local` sous le nom `SUPABASE_SERVICE_ROLE_KEY`, puis redémarrez l'application. Cette clé donne un accès total à la base : elle reste sur le serveur, ne se partage jamais et ne doit jamais commencer par `NEXT_PUBLIC_`.
 
 ### Rappel quotidien des dossiers bloqués (facultatif)
 

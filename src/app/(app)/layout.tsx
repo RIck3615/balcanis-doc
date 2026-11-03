@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { redirect } from "next/navigation";
 import { getProfile, hasRole } from "@/lib/auth";
 import { ROLE_LABELS } from "@/lib/labels";
 import { signOut } from "@/app/actions";
@@ -8,6 +9,8 @@ import { createClient } from "@/lib/supabase/server";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const profile = await getProfile();
+  // compte créé par l'administrateur : choisir son mot de passe avant tout
+  if (profile.must_change_password) redirect("/mot-de-passe");
   const supabase = await createClient();
   const { count: unread } = await supabase
     .from("notifications")

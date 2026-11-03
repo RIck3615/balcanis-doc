@@ -12,6 +12,7 @@ export interface Profile {
   timezone: string;
   active: boolean;
   available: boolean;
+  must_change_password: boolean;
 }
 
 export interface AgentPayment {
