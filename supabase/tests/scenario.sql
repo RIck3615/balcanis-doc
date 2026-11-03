@@ -218,4 +218,23 @@ select test.expect_error(format($$select public.require_password_change(%L)$$, a
 select test.as_user('chef@balcanis.test');
 select public.require_password_change((select id from auth.users where email = 'nouveau@balcanis.test'));
 select must_change_password from public.profiles where email = 'nouveau@balcanis.test';
+-- Création d'un agent dans la plateforme (0009)
+select test.as_user('chef@balcanis.test');
+create temp table agent_cree as
+  select * from public.create_agent('Nouvel.Agent@Exemple.com', 'Jean Mukendi', '{TRT}', null, '{pe, ee-cec}', 9.5);
+grant select on agent_cree to authenticated;
+select agent_code, temporary_password ~ '^[A-Za-z2-9]{4}-[A-Za-z2-9]{4}-[A-Za-z2-9]{4}$' as format_ok from agent_cree;
+select email, full_name, roles, certified_programs, hourly_rate, must_change_password from public.profiles where email = 'nouvel.agent@exemple.com';
+reset role;
+select (u.encrypted_password = crypt(a.temporary_password, u.encrypted_password)) as mot_de_passe_valide,
+       u.email_confirmed_at is not null as confirme, (select count(*) from auth.identities i where i.user_id = u.id) as identites
+from auth.users u join agent_cree a on a.user_id = u.id;
+set role authenticated;
+select test.expect_error($$select * from public.create_agent('nouvel.agent@exemple.com', 'Doublon', '{TRT}')$$, 'existe déjà');
+select test.expect_error($$select * from public.create_agent('pas-un-courriel', 'X', '{TRT}')$$, 'Courriel invalide');
+select test.expect_error($$select * from public.create_agent('x@y.cd', 'X', '{}')$$, 'au moins un rôle');
+select length(public.reset_agent_password((select user_id from agent_cree))) as longueur_nouveau_mdp;
+select test.as_user('trt@balcanis.test');
+select test.expect_error($$select * from public.create_agent('z@y.cd', 'Z', '{ADM}')$$, 'rôle requis');
+select test.expect_error(format($$select public.reset_agent_password(%L)$$, (select user_id from agent_cree)), 'rôle requis');
 select 'SCÉNARIO RÉUSSI' as resultat;

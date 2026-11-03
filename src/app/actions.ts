@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient, temporaryPassword } from "@/lib/supabase/admin";
 import { getProfile, hasRole } from "@/lib/auth";
 
 export type ActionResult = { error?: string; ok?: string; password?: string; email?: string } | null;
@@ -228,64 +227,33 @@ export async function markAllNotificationsReadAction() {
 }
 
 // ---------------------------------------------------------------- création d'agents (ADM, CHF)
-const NO_SERVICE_KEY =
-  "La création de comptes n'est pas configurée : ajoutez SUPABASE_SERVICE_ROLE_KEY dans .env.local (voir README), puis redémarrez l'application.";
-
+// Tout se fait dans la base (fonctions create_agent et reset_agent_password),
+// qui vérifie elle-même que l'utilisateur est administrateur ou chef du cabinet.
 export async function createAgentAction(_: ActionResult, fd: FormData): Promise<ActionResult> {
   const me = await getProfile();
   if (!hasRole(me, "ADM", "CHF")) return { error: "Seuls l'administrateur et le chef du cabinet peuvent créer un agent." };
-  const admin = createAdminClient();
-  if (!admin) return { error: NO_SERVICE_KEY };
-
-  const email = str(fd, "email").toLowerCase();
-  const fullName = str(fd, "full_name");
-  const roles = fd.getAll("roles").map(String);
-  if (!email || !fullName) return { error: "Le nom et le courriel sont obligatoires." };
-  if (roles.length === 0) return { error: "Choisissez au moins un rôle." };
-
-  const password = temporaryPassword();
-  const { data, error } = await admin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: { full_name: fullName, must_change_password: true },
-  });
-  if (error || !data.user) {
-    const msg = error?.message ?? "";
-    return { error: /already|registered|exists/i.test(msg) ? "Un compte existe déjà avec ce courriel." : `Création impossible : ${msg}` };
-  }
-
-  // rôles, bureau, certifications et taux : par la fonction habituelle, avec la session de l'ADM (journalisé)
   const rate = optional(fd, "hourly_rate");
-  const res = await rpc("admin_set_profile", {
-    p_user: data.user.id,
-    p_full_name: fullName,
-    p_roles: roles,
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("create_agent", {
+    p_email: str(fd, "email"),
+    p_full_name: str(fd, "full_name"),
+    p_roles: fd.getAll("roles").map(String),
     p_office: optional(fd, "office"),
-    p_certified: str(fd, "certified").split(/[\s,]+/).map((x) => x.trim().toUpperCase()).filter(Boolean),
+    p_certified: str(fd, "certified").split(/[\s,]+/).filter(Boolean),
     p_hourly_rate: rate ? Number(rate.replace(",", ".")) : null,
-    p_active: true,
   });
-  if (res.error) return { error: `Compte créé, mais rôles non enregistrés : ${res.error}. Complétez-les dans la liste.` };
-
+  if (error) return { error: error.message };
+  const row = (data as { agent_code: string; temporary_password: string }[])[0];
   revalidatePath("/admin/agents");
-  return { ok: "Agent créé", email, password };
+  return { ok: `Agent ${row.agent_code} créé`, email: str(fd, "email").toLowerCase(), password: row.temporary_password };
 }
 
 // Nouveau mot de passe temporaire (agent qui a oublié le sien)
 export async function resetAgentPasswordAction(_: ActionResult, fd: FormData): Promise<ActionResult> {
-  const me = await getProfile();
-  if (!hasRole(me, "ADM", "CHF")) return { error: "Action réservée à l'administrateur et au chef du cabinet." };
-  const admin = createAdminClient();
-  if (!admin) return { error: NO_SERVICE_KEY };
-  const userId = str(fd, "user");
-  if (userId === me.id) return { error: "Changez votre propre mot de passe depuis Mon profil." };
-  const password = temporaryPassword();
-  const { error } = await admin.auth.admin.updateUserById(userId, { password });
-  if (error) return { error: error.message };
-  const res = await rpc("require_password_change", { p_user: userId });
+  const res = await rpc("reset_agent_password", { p_user: str(fd, "user") });
   if (res.error) return { error: res.error };
-  return { ok: "Nouveau mot de passe temporaire", email: str(fd, "email"), password };
+  revalidatePath("/admin/agents");
+  return { ok: "Nouveau mot de passe temporaire", email: str(fd, "email"), password: res.data as string };
 }
 
 export async function passwordChangedAction() {

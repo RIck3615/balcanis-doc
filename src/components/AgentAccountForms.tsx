@@ -14,7 +14,7 @@ function Credentials({ email, password }: { email: string; password: string }) {
   const text = `Plateforme BalCAN\nCourriel : ${email}\nMot de passe temporaire : ${password}\nVous devrez choisir votre propre mot de passe à la première connexion.`;
   return (
     <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm">
-      <p className="font-semibold text-emerald-800">Identifiants à transmettre à l&apos;agent</p>
+      <p className="font-semibold text-emerald-800">Compte créé : identifiants à transmettre à l&apos;agent</p>
       <p className="mt-2">Courriel : <span className="font-mono">{email}</span></p>
       <p>Mot de passe temporaire : <span className="rounded bg-white px-2 py-0.5 font-mono text-base font-semibold tracking-wide text-navy">{password}</span></p>
       <p className="mt-2 text-xs text-emerald-800">

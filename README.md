@@ -53,7 +53,7 @@ where email = 'votre-courriel@exemple.com';
 
 Ensuite, tout se fait dans l'application : page **Agents > Nouvel agent**. Le système crée le compte avec un mot de passe temporaire, que vous transmettez à l'agent ; il doit choisir son propre mot de passe à sa première connexion.
 
-Pour que cette création fonctionne, ajoutez la clé **service_role** (Project Settings > API) dans `.env.local` sous le nom `SUPABASE_SERVICE_ROLE_KEY`, puis redémarrez l'application. Cette clé donne un accès total à la base : elle reste sur le serveur, ne se partage jamais et ne doit jamais commencer par `NEXT_PUBLIC_`.
+Aucune clé supplémentaire n'est nécessaire : la base crée le compte elle-même, après avoir vérifié que l'utilisateur est administrateur ou chef du cabinet.
 
 ### Rappel quotidien des dossiers bloqués (facultatif)
 
