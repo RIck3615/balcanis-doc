@@ -161,6 +161,54 @@ export async function openDocumentAction(documentId: string): Promise<{ url?: st
   return { url: data.signedUrl };
 }
 
+// Téléchargement d'une pièce : lien de 60 s qui force l'enregistrement sous le nom de la nomenclature
+export async function downloadDocumentAction(documentId: string): Promise<{ url?: string; error?: string }> {
+  const supabase = await createClient();
+  const { data: doc } = await supabase.from("documents").select("id, storage_path, file_name").eq("id", documentId).single();
+  if (!doc) return { error: "Pièce introuvable" };
+  const log = await supabase.rpc("log_document_access", { p_document: documentId, p_action: "telechargement" });
+  if (log.error) return { error: log.error.message };
+  const { data, error } = await supabase.storage.from("dossiers").createSignedUrl(doc.storage_path, 60, { download: doc.file_name });
+  if (error || !data) return { error: error?.message ?? "Lien indisponible" };
+  return { url: data.signedUrl };
+}
+
+// Téléchargement du dossier complet : liens temporaires pour chaque pièce, rangées
+// dans l'arborescence de la nomenclature. Le ZIP est assemblé dans le navigateur.
+export async function prepareDossierDownloadAction(
+  dossierId: string,
+  allVersions: boolean,
+): Promise<{ number?: string; files?: { path: string; url: string }[]; error?: string }> {
+  const supabase = await createClient();
+  const { data: dossier } = await supabase.from("dossiers").select("number").eq("id", dossierId).single();
+  if (!dossier) return { error: "Dossier introuvable" };
+  let query = supabase.from("documents").select("id, storage_path, file_name, is_current").eq("dossier_id", dossierId);
+  if (!allVersions) query = query.eq("is_current", true);
+  const { data: docs } = await query;
+  if (!docs || docs.length === 0) return { error: "Aucune pièce à télécharger" };
+
+  const logs = await Promise.all(
+    docs.map((d) => supabase.rpc("log_document_access", { p_document: d.id, p_action: "telechargement" })),
+  );
+  const denied = logs.find((l) => l.error);
+  if (denied?.error) return { error: denied.error.message };
+
+  const { data: signed, error } = await supabase.storage.from("dossiers").createSignedUrls(docs.map((d) => d.storage_path), 300);
+  if (error || !signed) return { error: error?.message ?? "Liens indisponibles" };
+  const files = signed
+    .filter((x) => x.signedUrl && x.path)
+    .map((x) => {
+      const doc = docs.find((d) => d.storage_path === x.path)!;
+      // storage_path = NUMERO/NN_DOSSIER/fichier ; les anciennes versions vont dans un sous-dossier
+      const [, folder] = doc.storage_path.split("/");
+      return {
+        path: `${dossier.number}/${folder}/${doc.is_current ? "" : "versions_precedentes/"}${doc.file_name}`,
+        url: x.signedUrl as string,
+      };
+    });
+  return { number: dossier.number, files };
+}
+
 // ---------------------------------------------------------------- agents et profil
 export async function adminSetProfileAction(_: ActionResult, fd: FormData): Promise<ActionResult> {
   const rate = optional(fd, "hourly_rate");

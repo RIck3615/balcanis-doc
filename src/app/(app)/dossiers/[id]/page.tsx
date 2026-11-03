@@ -13,6 +13,7 @@ import { ActionForm } from "@/components/ActionForm";
 import { Card, Empty, Field, StatusBadge, inputClass } from "@/components/ui";
 import { DocumentUpload } from "@/components/DocumentUpload";
 import { OpenDocumentButton } from "@/components/OpenDocumentButton";
+import { DownloadDocumentButton, DownloadDossierButton } from "@/components/DownloadButtons";
 import { Timer } from "@/components/Timer";
 import {
   addMemberAction, assignAction, correctSessionAction, submitDossierAction, submitReviewAction,
@@ -168,7 +169,10 @@ export default async function DossierPage({ params }: { params: Promise<{ id: st
           )}
 
           {/* Pièces, rangées par sous-dossier */}
-          <Card title="Pièces du dossier">
+          <Card
+            title="Pièces du dossier"
+            actions={docList.length > 0 ? <DownloadDossierButton dossierId={id} hasOldVersions={docList.some((x) => !x.is_current)} /> : undefined}
+          >
             {docList.length === 0 && <Empty>Aucune pièce déposée.</Empty>}
             <div className="space-y-3">
               {categoryList.map((c) => {
@@ -190,7 +194,10 @@ export default async function DossierPage({ params }: { params: Promise<{ id: st
                             <span className="ml-2 text-slate-500">{typeLabel(doc.type_code)} · {doc.person_code}</span>
                             {doc.expires_on && <span className="ml-2 text-xs text-slate-500">expire le {formatDate(doc.expires_on)}</span>}
                           </span>
-                          <OpenDocumentButton documentId={doc.id} />
+                          <span className="flex items-center gap-2">
+                            <OpenDocumentButton documentId={doc.id} />
+                            <DownloadDocumentButton documentId={doc.id} />
+                          </span>
                         </li>
                       ))}
                     </ul>
@@ -201,7 +208,10 @@ export default async function DossierPage({ params }: { params: Promise<{ id: st
                           {older.map((doc) => (
                             <li key={doc.id} className="flex items-center gap-2">
                               <span className="font-mono">{doc.file_name}</span>
-                              <OpenDocumentButton documentId={doc.id} />
+                              <span className="flex items-center gap-2">
+                            <OpenDocumentButton documentId={doc.id} />
+                            <DownloadDocumentButton documentId={doc.id} />
+                          </span>
                             </li>
                           ))}
                         </ul>
@@ -248,7 +258,7 @@ export default async function DossierPage({ params }: { params: Promise<{ id: st
                   <span className="absolute -left-[21px] top-1 h-2 w-2 rounded-full bg-navy" aria-hidden />
                   <span className="shrink-0 text-slate-500 tabular-nums">{formatDateTime(a.created_at)}</span>
                   <span className="shrink-0 font-mono font-medium text-navy">{a.actor_code ?? "système"}</span>
-                  <span>{a.action}{a.reason ? <span className="text-slate-500"> : {a.reason}</span> : null}</span>
+                  <span>{a.action.replace("pièce telechargement", "pièce téléchargée").replace("pièce consultation", "pièce consultée")}{a.reason ? <span className="text-slate-500"> : {a.reason}</span> : null}</span>
                 </li>
               ))}
             </ol>
