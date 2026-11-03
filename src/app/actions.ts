@@ -329,3 +329,23 @@ export async function updateOfficeAction(_: ActionResult, fd: FormData): Promise
   revalidatePath("/admin/bureaux");
   return { ok: "Bureau enregistré" };
 }
+
+// ---------------------------------------------------------------- formulaires par programme (ADM, CHF)
+export async function saveFormTypeAction(_: ActionResult, fd: FormData): Promise<ActionResult> {
+  const res = await rpc("save_form_type", { p_number: str(fd, "number"), p_label: str(fd, "label"), p_url: str(fd, "url") });
+  if (res.error) return { error: res.error };
+  revalidatePath("/admin/formulaires");
+  return { ok: "Formulaire enregistré" };
+}
+
+export async function addProgramFormAction(_: ActionResult, fd: FormData): Promise<ActionResult> {
+  const res = await rpc("add_program_form", { p_program: str(fd, "program"), p_type: str(fd, "type"), p_scope: str(fd, "scope") || "P" });
+  if (res.error) return { error: res.error };
+  revalidatePath("/admin/formulaires");
+  return { ok: "Ajouté" };
+}
+
+export async function removeProgramFormAction(fd: FormData) {
+  await rpc("remove_program_form", { p_id: Number(str(fd, "id")) });
+  revalidatePath("/admin/formulaires");
+}

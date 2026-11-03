@@ -6,7 +6,7 @@ import {
   RETURN_REASONS, STATUS_LABELS, formatDate, formatDateTime, formatDuration, pad2, personLabel,
 } from "@/lib/labels";
 import type {
-  AuditEntry, ChecklistItem, Client, DocumentCategory, DocumentRow, DocumentType, Dossier, Member,
+  AuditEntry, ChecklistItem, Client, DossierForm, DocumentCategory, DocumentRow, DocumentType, Dossier, Member,
   Review, StaffEntry, StatusTransition, TimeSession,
 } from "@/lib/types";
 import { ActionForm } from "@/components/ActionForm";
@@ -14,6 +14,7 @@ import { Card, Empty, Field, StatusBadge, inputClass } from "@/components/ui";
 import { DocumentUpload } from "@/components/DocumentUpload";
 import { OpenDocumentButton } from "@/components/OpenDocumentButton";
 import { DownloadDocumentButton, DownloadDossierButton } from "@/components/DownloadButtons";
+import { FormUploadButton } from "@/components/FormUploadButton";
 import { Timer } from "@/components/Timer";
 import {
   addMemberAction, assignAction, correctSessionAction, submitDossierAction, submitReviewAction,
@@ -50,6 +51,9 @@ export default async function DossierPage({ params }: { params: Promise<{ id: st
     supabase.from("programs").select("name").eq("code", d.program_code).maybeSingle(),
     supabase.from("dossier_statuses").select("code, timer_open, billable").eq("code", d.status).single(),
   ]);
+  const { data: formsData } = await supabase.rpc("dossier_forms", { p_dossier: id });
+  const forms = (formsData ?? []) as DossierForm[];
+  const formsMissing = forms.filter((f) => !f.document_id).length;
 
   const staffList = (staff ?? []) as StaffEntry[];
   const nameOf = (uid: string | null) => {
@@ -135,6 +139,60 @@ export default async function DossierPage({ params }: { params: Promise<{ id: st
               {d.decision && <div className="sm:col-span-2"><dt className="text-xs text-slate-500">Décision</dt><dd>{d.decision}</dd></div>}
             </dl>
           </Card>
+
+          {/* Formulaires officiels du programme */}
+          {d.status >= 20 && d.status !== 99 && forms.length > 0 && (
+            <Card
+              title={`Formulaires du programme ${d.program_code}`}
+              actions={
+                formsMissing > 0 ? (
+                  <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800">{formsMissing} à téléverser</span>
+                ) : (
+                  <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">Complets</span>
+                )
+              }
+            >
+              {isProcessor && [30, 55, 75].includes(d.status) && (
+                <p className="mb-3 text-sm text-slate-600">
+                  Remplissez chaque formulaire officiel, enregistrez-le en PDF, puis téléversez-le ici. Le nom du fichier est attribué automatiquement.
+                  Le dossier ne peut pas partir au contrôle tant qu&apos;un formulaire manque.
+                </p>
+              )}
+              <ul className="-mx-5 divide-y divide-slate-100">
+                {forms.map((f) => (
+                  <li key={f.person_code + f.type_code} className="flex flex-wrap items-center gap-3 px-5 py-3">
+                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${f.document_id ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                      {f.document_id ? "✓" : "!"}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm">
+                        <span className="font-mono text-xs font-semibold text-navy">{f.form_number}</span>{" "}
+                        <span className="font-medium text-slate-900">{f.label}</span>
+                      </span>
+                      <span className="block text-xs text-slate-500">
+                        {f.person_code} · {personLabel(f.person_code)}
+                        {f.document_id ? ` · v${String(f.version).padStart(2, "0")} du ${formatDateTime(f.uploaded_at)}` : " · pas encore téléversé"}
+                        {f.official_url && (
+                          <>
+                            {" · "}
+                            <a href={f.official_url} target="_blank" rel="noreferrer" className="font-medium text-navy underline hover:text-brand-red">
+                              formulaire officiel
+                            </a>
+                          </>
+                        )}
+                      </span>
+                    </span>
+                    <span className="flex items-center gap-2">
+                      {f.document_id && <OpenDocumentButton documentId={f.document_id} />}
+                      {isProcessor && [30, 55, 75].includes(d.status) && (
+                        <FormUploadButton dossierId={id} person={f.person_code} type={f.type_code} hasVersion={!!f.document_id} />
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
 
           {/* Auto-vérification par l'agent de traitement */}
           {isProcessor && [30, 55, 75].includes(d.status) && (

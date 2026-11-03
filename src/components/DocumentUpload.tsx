@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { uploadDocument } from "@/lib/upload";
 import type { DocumentCategory, DocumentType, Member } from "@/lib/types";
 import { personLabel } from "@/lib/labels";
 
@@ -30,36 +30,14 @@ export function DocumentUpload({ dossierId, members, categories, types }: Props)
     if (!file || !type) return;
     setPending(true);
     setMessage(null);
-    const supabase = createClient();
-    const ext = file.name.includes(".") ? file.name.split(".").pop()!.toLowerCase() : "";
-    const { data, error } = await supabase.rpc("register_document", {
-      p_dossier: dossierId,
-      p_person_code: person,
-      p_type: type,
-      p_extension: ext,
-      p_mime: file.type || null,
-      p_size: file.size,
-      p_issued_on: issued || null,
-      p_expires_on: expires || null,
-    });
-    if (error || !data?.[0]) {
+    const res = await uploadDocument({ dossierId, person, type, file, issuedOn: issued, expiresOn: expires });
+    if (res.error) {
       setPending(false);
-      setMessage({ error: error?.message ?? "Enregistrement impossible" });
-      return;
-    }
-    const doc = data[0] as { id: string; file_name: string; storage_path: string };
-    const upload = await supabase.storage.from("dossiers").upload(doc.storage_path, file, {
-      contentType: file.type || undefined,
-      upsert: false,
-    });
-    if (upload.error) {
-      await supabase.rpc("discard_document", { p_document: doc.id });
-      setPending(false);
-      setMessage({ error: `Dépôt du fichier échoué : ${upload.error.message}. Réessayez.` });
+      setMessage({ error: res.error });
       return;
     }
     setPending(false);
-    setMessage({ ok: `Pièce enregistrée sous ${doc.file_name}` });
+    setMessage({ ok: `Pièce enregistrée sous ${res.fileName}` });
     setFile(null);
     (e.target as HTMLFormElement).reset();
     router.refresh();
@@ -85,7 +63,7 @@ export function DocumentUpload({ dossierId, members, categories, types }: Props)
             <option value="" disabled>Choisir…</option>
             {categories.map((c) => (
               <optgroup key={c.code} label={c.folder}>
-                {types.filter((t) => t.category_code === c.code).map((t) => (
+                {types.filter((t) => t.category_code === c.code && !t.form_number).map((t) => (
                   <option key={t.code} value={t.code}>{t.label}</option>
                 ))}
               </optgroup>

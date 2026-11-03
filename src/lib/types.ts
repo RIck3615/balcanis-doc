@@ -111,6 +111,20 @@ export interface DocumentType {
   code: string;
   label: string;
   category_code: string;
+  form_number?: string | null;
+  official_url?: string | null;
+}
+
+export interface DossierForm {
+  person_code: string;
+  type_code: string;
+  form_number: string;
+  label: string;
+  official_url: string | null;
+  document_id: string | null;
+  file_name: string | null;
+  version: number | null;
+  uploaded_at: string | null;
 }
 
 export interface DocumentCategory {

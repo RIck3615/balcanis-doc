@@ -13,6 +13,7 @@ Elle met en œuvre le document « Plateforme BalCanis : Cadrage fonctionnel de l
 | Clients et dossiers | Attribution automatique de l'agent de collecte (disponible et le moins chargé du bureau), numéros générés (`CL-2026-000187`, `BC-KIN-2026-00042-PE`), membres du dossier (P, C, E1…, G), référentiel des programmes avec dates d'ouverture et de fermeture |
 | Pièces | Dépôt depuis le navigateur ; le système génère le nom (`BC-KIN-2026-00042_P_01_PASSEPORT_20261101_v01.pdf`) et le sous-dossier (`01_IDENTITE`). Versions conservées, pièces obligatoires manquantes affichées |
 | Circuit | Statuts 00 à 99, transitions autorisées par rôle, motif obligatoire pour les retours, réassignations et annulations |
+| Formulaires officiels | Liste des formulaires IRCC à remplir par programme (ex. IMM 1294, IMM 5645, IMM 5476 pour un permis d'études), téléversement par l'agent de traitement avec nom conforme à la nomenclature, blocage de l'envoi au contrôle tant qu'un formulaire manque, liste modifiable dans Administration > Formulaires |
 | Contrôle qualité | Auto-vérification par l'agent de traitement, liste de contrôle par le contrôleur, renvois numérotés (`…-R01`) avec motifs. Le contrôleur ne peut jamais être le traitant |
 | Validation | Seul le chef du cabinet valide et soumet (aucune délégation) ; numéro de demande obligatoire |
 | Temps et paie | Chronomètre par dossier, pause automatique après 10 minutes d'inactivité, temps du statut 55 mesuré mais non payé, validation des heures après le contrôle, corrections avec motif, relevé mensuel par agent |
@@ -112,6 +113,7 @@ Ces règles sont codées avec une valeur provisoire, faciles à changer :
 - **Taux horaire** : un taux par agent, saisi dans **Agents**. Le cabinet n'a pas encore décidé s'il sera unique, par niveau ou par pays.
 - **Temps du statut 55 (corrections)** : non payé pour l'instant (`dossier_statuses.billable = false`). Le statut 75 (retour du chef) suit la même règle en attendant une décision.
 - **Pièces obligatoires** : seul le socle commun et quelques exemples sont saisis (`required_documents`). Il reste à reprendre les listes officielles IRCC et MIFI, programme par programme.
+- **Formulaires par programme** : la liste fournie est un point de départ. Le cabinet doit la vérifier avec les guides en vigueur (certaines demandes se font entièrement en ligne, sans formulaire PDF) et ajouter les liens officiels.
 - **Programmes** : à vérifier avant la mise en service : TAU, VDE, QC-AFF et chaque programme pilote.
 - **Conservation** : 90 jours après la fermeture selon le cabinet, à valider avec un juriste ; la suppression automatique n'est pas encore programmée.
 - **Inactivité** : la pause du chronomètre se fait après 10 minutes sans activité.

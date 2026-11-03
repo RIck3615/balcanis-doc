@@ -98,6 +98,13 @@ set role authenticated;
 select public.stop_timer();
 -- auto-vérification incomplète, puis complète
 select test.expect_error(format($$select public.submit_review(%L, 'auto', '[]'::jsonb)$$, (select v from ctx where k = 'dossier')), 'incomplète');
+-- formulaires du programme (0011) : refus tant qu'ils ne sont pas téléversés
+select person_code, form_number, document_id is not null as televerse from public.dossier_forms((select v::uuid from ctx where k = 'dossier'));
+select test.expect_error(format($$select public.submit_review(%L, 'auto', %L::jsonb)$$, (select v from ctx where k = 'dossier'),
+  (select jsonb_agg(jsonb_build_object('item_id', id, 'answer', 'conforme')) from public.checklist_items where level = 'auto')), 'Formulaires à téléverser');
+select r.file_name from unnest(array['FORMULAIRE-IMM5476','FORMULAIRE-IMM1294','FORMULAIRE-IMM5645']) t,
+  lateral public.register_document((select v::uuid from ctx where k = 'dossier'), 'P', t, 'pdf') r;
+select count(*) filter (where document_id is null) as formulaires_manquants from public.dossier_forms((select v::uuid from ctx where k = 'dossier'));
 select public.submit_review((select v::uuid from ctx where k = 'dossier'), 'auto',
   (select jsonb_agg(jsonb_build_object('item_id', id, 'answer', 'conforme')) from public.checklist_items where level = 'auto')) is not null as auto_ok;
 
@@ -251,4 +258,12 @@ select (public.create_client('A', 'B', null, null, null, 'CG', 'BZV')).office_co
 select test.as_user('gbr@balcanis.test');
 select test.expect_error($$select public.create_office('PNR', 'Pointe-Noire', 'CG')$$, 'rôle requis');
 select count(*) as stats_vues_par_gbr from public.office_stats();
+-- Administration des formulaires (0011)
+select test.as_user('chef@balcanis.test');
+select public.save_form_type('IMM 5708', 'Prolonger le séjour (visiteur)', 'https://www.canada.ca/');
+select public.add_program_form('PROL', 'FORMULAIRE-IMM5708', 'P');
+select count(*) as formulaires_prol from public.program_forms where program_code = 'PROL';
+select test.expect_error($$select public.save_form_type('IMM 1', 'X', 'http://pas-securise')$$, 'https://');
+select test.as_user('trt@balcanis.test');
+select test.expect_error($$select public.add_program_form('PE', 'FORMULAIRE-IMM5708', 'P')$$, 'rôle requis');
 select 'SCÉNARIO RÉUSSI' as resultat;
