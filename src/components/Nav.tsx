@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 
 const ICONS: Record<string, React.ReactNode> = {
   home: <path d="M3 10.5 12 3l9 7.5M5 9v11h5v-6h4v6h5V9" />,
@@ -18,32 +19,62 @@ const ICONS: Record<string, React.ReactNode> = {
   user: <path d="M20 20v-1a5 5 0 0 0-5-5H9a5 5 0 0 0-5 5v1M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />,
 };
 
-export type NavItem = { href: string; label: string; icon: keyof typeof ICONS };
+export type NavItem = { href: string; label: string; icon: keyof typeof ICONS; section?: string };
 
-export function Nav({ items }: { items: NavItem[] }) {
+// Menu de navigation. En mode compact, seules les icônes restent visibles ;
+// le nom apparaît dans une bulle au survol (et reste lu par les lecteurs d'écran).
+export function Nav({ items, compact = false, onNavigate }: { items: NavItem[]; compact?: boolean; onNavigate?: () => void }) {
   const pathname = usePathname();
   // l'entrée active est celle dont le chemin correspond le plus précisément à la page
   const matches = items.filter((i) => (i.href === "/" ? pathname === "/" : pathname === i.href || pathname.startsWith(i.href + "/")));
   const activeHref = matches.sort((a, b) => b.href.length - a.href.length)[0]?.href;
-  const isActive = (href: string) => href === activeHref;
+  // bulle du mode compact en position fixe : elle n'est pas coupée quand le menu défile
+  const [tip, setTip] = useState<{ label: string; top: number; left: number } | null>(null);
+  const showTip = (label: string) => (e: React.MouseEvent | React.FocusEvent) => {
+    if (!compact) return;
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setTip({ label, top: r.top + r.height / 2, left: r.right + 12 });
+  };
   return (
-    <nav className="flex gap-1 overflow-x-auto px-3 pb-3 md:flex-col md:overflow-visible md:pb-0">
-      {items.map((item) => {
-        const active = isActive(item.href);
+    <nav className="flex flex-col gap-1 px-3" onMouseLeave={() => setTip(null)}>
+      {tip && (
+        <span
+          className="pointer-events-none fixed z-50 -translate-y-1/2 whitespace-nowrap rounded-lg bg-navy-dark px-2.5 py-1.5 text-xs font-medium text-white shadow-lg"
+          style={{ top: tip.top, left: tip.left }}
+          aria-hidden
+        >
+          {tip.label}
+        </span>
+      )}
+      {items.map((item, i) => {
+        const active = item.href === activeHref;
+        const newSection = item.section && item.section !== items[i - 1]?.section;
         return (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`group relative flex items-center gap-3 whitespace-nowrap rounded-xl px-3 py-2.5 text-sm font-medium transition ${
-              active ? "bg-navy text-white shadow-sm" : "text-slate-600 hover:bg-navy-light hover:text-navy"
-            }`}
-          >
-            {active && <span className="absolute -left-3 top-2 hidden h-7 w-1 rounded-r-full bg-brand-red md:block" aria-hidden />}
-            <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              {ICONS[item.icon]}
-            </svg>
-            {item.label}
-          </Link>
+          <div key={item.href}>
+            {newSection &&
+              (compact ? (
+                <div className="mx-2 my-2 border-t border-slate-200" aria-hidden />
+              ) : (
+                <p className="px-3 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">{item.section}</p>
+              ))}
+            <Link
+              href={item.href}
+              onClick={() => { setTip(null); onNavigate?.(); }}
+              onMouseEnter={showTip(item.label)}
+              onFocus={showTip(item.label)}
+              onBlur={() => setTip(null)}
+              aria-label={compact ? item.label : undefined}
+              className={`group relative flex items-center gap-3 whitespace-nowrap rounded-xl py-2.5 text-sm font-medium transition ${
+                compact ? "justify-center px-0" : "px-3"
+              } ${active ? "bg-navy text-white shadow-sm" : "text-slate-600 hover:bg-navy-light hover:text-navy"}`}
+            >
+              {active && <span className="absolute -left-3 top-2 h-7 w-1 rounded-r-full bg-brand-red" aria-hidden />}
+              <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                {ICONS[item.icon]}
+              </svg>
+              {!compact && item.label}
+            </Link>
+          </div>
         );
       })}
     </nav>

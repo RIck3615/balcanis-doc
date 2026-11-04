@@ -1,16 +1,14 @@
-import Image from "next/image";
 import { redirect } from "next/navigation";
 import { getProfile, hasRole } from "@/lib/auth";
 import { ROLE_LABELS } from "@/lib/labels";
-import { signOut } from "@/app/actions";
-import { Nav, type NavItem } from "@/components/Nav";
-import { NotificationBell } from "@/components/NotificationBell";
+import type { NavItem } from "@/components/Nav";
+import { Sidebar } from "@/components/Sidebar";
+import { cookies } from "next/headers";
 import { IdleLogout } from "@/components/IdleLogout";
 import { NavigationProgress } from "@/components/NavigationProgress";
 import { Suspense } from "react";
 import { getSettings } from "@/lib/settings";
 import { signAvatars } from "@/lib/avatars";
-import { Avatar } from "@/components/AgentBits";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -29,6 +27,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .eq("user_id", profile.id)
     .is("read_at", null);
   const avatarUrls = await signAvatars(supabase, [profile.avatar_path]);
+  const compact = (await cookies()).get("bc_menu")?.value === "compact";
   const items: (NavItem & { show: boolean })[] = [
     { href: "/", label: "Tableau de bord", icon: "home", show: true },
     { href: "/dossiers", label: "Dossiers", icon: "folder", show: true },
@@ -36,12 +35,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/controle", label: "File de contrôle", icon: "check", show: hasRole(profile, "CTL") },
     { href: "/suivi", label: "Suivi IRCC", icon: "inbox", show: hasRole(profile, "GBR", "CHF", "ADM", "TRT", "COL") },
     { href: "/heures", label: "Heures et paie", icon: "clock", show: hasRole(profile, "TRT", "GBR", "CHF", "ADM") },
-    { href: "/admin/agents", label: "Agents", icon: "users", show: hasRole(profile, "ADM", "CHF") },
-    { href: "/admin/bureaux", label: "Bureaux", icon: "building", show: hasRole(profile, "ADM", "CHF") },
-    { href: "/admin/formulaires", label: "Formulaires", icon: "file", show: hasRole(profile, "ADM", "CHF") },
-    { href: "/admin/securite", label: "Sécurité", icon: "shield", show: hasRole(profile, "ADM", "CHF") },
-    { href: "/admin/journal", label: "Journal d'audit", icon: "list", show: hasRole(profile, "ADM", "CHF") },
     { href: "/profil", label: "Mon profil", icon: "user", show: true },
+    { href: "/admin/agents", label: "Agents", icon: "users", section: "Administration", show: hasRole(profile, "ADM", "CHF") },
+    { href: "/admin/bureaux", label: "Bureaux", icon: "building", section: "Administration", show: hasRole(profile, "ADM", "CHF") },
+    { href: "/admin/formulaires", label: "Formulaires", icon: "file", section: "Administration", show: hasRole(profile, "ADM", "CHF") },
+    { href: "/admin/securite", label: "Sécurité", icon: "shield", section: "Administration", show: hasRole(profile, "ADM", "CHF") },
+    { href: "/admin/journal", label: "Journal d'audit", icon: "list", section: "Administration", show: hasRole(profile, "ADM", "CHF") },
   ];
 
   return (
@@ -50,38 +49,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <Suspense>
         <NavigationProgress />
       </Suspense>
-      <aside className="border-b border-slate-200 bg-white md:sticky md:top-0 md:flex md:h-screen md:w-64 md:shrink-0 md:flex-col md:border-b-0 md:border-r">
-        <div className="flex items-center gap-3 px-5 py-5">
-          <Image src="/logo-mark.png" alt="" width={40} height={40} priority />
-          <div className="flex-1 leading-tight">
-            <p className="text-lg font-bold tracking-tight text-navy">
-              Bal<span className="text-brand-red">CAN</span>
-            </p>
-            <p className="whitespace-nowrap text-[10px] font-medium uppercase tracking-[0.08em] text-slate-500">Gestion des dossiers</p>
-          </div>
-          <NotificationBell userId={profile.id} unread={unread ?? 0} />
-        </div>
-        <Nav items={items.filter((i) => i.show)} />
-        <div className="mt-auto hidden p-3 md:block">
-          <div className="rounded-2xl bg-surface p-3">
-            <div className="flex items-center gap-3">
-              <Avatar name={profile.full_name || profile.email} src={profile.avatar_path ? avatarUrls[profile.avatar_path] : null} />
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-slate-900">{profile.full_name || profile.email}</p>
-                <p className="font-mono text-xs text-slate-500">{profile.agent_code ?? "Sans code agent"}</p>
-              </div>
-            </div>
-            <p className="mt-2 text-xs text-slate-600">
-              {profile.roles.map((r) => ROLE_LABELS[r]).join(", ") || "Aucun rôle pour l'instant"}
-            </p>
-            <form action={signOut} className="mt-3">
-              <button className="w-full rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-navy ring-1 ring-inset ring-slate-200 transition hover:bg-navy-light">
-                Se déconnecter
-              </button>
-            </form>
-          </div>
-        </div>
-      </aside>
+      <Sidebar
+        items={items.filter((i) => i.show).map((i) => ({ href: i.href, label: i.label, icon: i.icon, section: i.section }))}
+        initialCompact={compact}
+        unread={unread ?? 0}
+        user={{
+          id: profile.id,
+          name: profile.full_name || profile.email,
+          code: profile.agent_code,
+          roles: profile.roles.map((r) => ROLE_LABELS[r]).join(", ") || "Aucun rôle pour l'instant",
+          avatar: profile.avatar_path ? avatarUrls[profile.avatar_path] ?? null : null,
+        }}
+      />
       <main className="min-w-0 flex-1 px-4 py-6 md:px-10 md:py-8">
         <div className="mx-auto max-w-7xl">{children}</div>
       </main>

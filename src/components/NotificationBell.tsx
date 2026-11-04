@@ -19,7 +19,8 @@ export function NotificationBell({ userId, unread }: { userId: string; unread: n
   useEffect(() => {
     const supabase = createClient();
     const channel = supabase
-      .channel(`notifications-${userId}`)
+      // nom unique par cloche : la cloche peut être affichée deux fois (menu ordinateur et barre mobile)
+      .channel(`notifications-${userId}-${crypto.randomUUID()}`)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
