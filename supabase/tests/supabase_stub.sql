@@ -14,14 +14,21 @@ create table auth.users (
   raw_user_meta_data jsonb default '{}',
   instance_id uuid, aud text, role text, encrypted_password text, email_confirmed_at timestamptz,
   raw_app_meta_data jsonb, created_at timestamptz, updated_at timestamptz,
-  confirmation_token text, recovery_token text, email_change text, email_change_token_new text
+  confirmation_token text, recovery_token text, email_change text, email_change_token_new text,
+  banned_until timestamptz, last_sign_in_at timestamptz
 );
+create table auth.sessions (id uuid primary key default gen_random_uuid(), user_id uuid, created_at timestamptz default now());
+create table auth.mfa_factors (id uuid primary key default gen_random_uuid(), user_id uuid, status text, factor_type text);
 create table auth.identities (
   id uuid primary key, user_id uuid, provider_id text, provider text, identity_data jsonb,
   last_sign_in_at timestamptz, created_at timestamptz, updated_at timestamptz
 );
 create function auth.uid() returns uuid language sql stable as $$
   select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
+$$;
+
+create function auth.jwt() returns jsonb language sql stable as $$
+  select coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb, '{}'::jsonb)
 $$;
 
 create schema storage;

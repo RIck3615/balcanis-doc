@@ -40,9 +40,14 @@ export default async function ProfilPage() {
         </dl>
       </Card>
       <Card title="Sécurité">
-        <Link href="/mot-de-passe" className={`inline-block rounded-lg px-4 py-2 text-sm font-medium ${buttonClass.secondary}`}>
-          Changer mon mot de passe
-        </Link>
+        <div className="flex flex-wrap gap-3">
+          <Link href="/mot-de-passe" className={`inline-block rounded-lg px-4 py-2 text-sm font-medium ${buttonClass.secondary}`}>
+            Changer mon mot de passe
+          </Link>
+          <Link href="/securite/2fa" className={`inline-block rounded-lg px-4 py-2 text-sm font-medium ${buttonClass.secondary}`}>
+            Double authentification
+          </Link>
+        </div>
       </Card>
       <Card title="Paiement">
         <p className="mb-3 text-sm text-slate-600">

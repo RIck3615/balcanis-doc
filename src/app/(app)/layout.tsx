@@ -5,6 +5,8 @@ import { ROLE_LABELS } from "@/lib/labels";
 import { signOut } from "@/app/actions";
 import { Nav, type NavItem } from "@/components/Nav";
 import { NotificationBell } from "@/components/NotificationBell";
+import { IdleLogout } from "@/components/IdleLogout";
+import { getSettings } from "@/lib/settings";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -12,6 +14,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // compte créé par l'administrateur : choisir son mot de passe avant tout
   if (profile.must_change_password) redirect("/mot-de-passe");
   const supabase = await createClient();
+  // double authentification : code demandé si elle est activée, activation imposée si le cabinet l'exige
+  const settings = await getSettings();
+  const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (aal?.nextLevel === "aal2" && aal.currentLevel !== "aal2") redirect("/securite/verification");
+  if (settings.mfa_obligatoire && aal?.nextLevel !== "aal2") redirect("/securite/2fa?obligatoire=1");
   const { count: unread } = await supabase
     .from("notifications")
     .select("id", { count: "exact", head: true })
@@ -26,6 +33,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/admin/agents", label: "Agents", icon: "users", show: hasRole(profile, "ADM", "CHF") },
     { href: "/admin/bureaux", label: "Bureaux", icon: "building", show: hasRole(profile, "ADM", "CHF") },
     { href: "/admin/formulaires", label: "Formulaires", icon: "file", show: hasRole(profile, "ADM", "CHF") },
+    { href: "/admin/securite", label: "Sécurité", icon: "shield", show: hasRole(profile, "ADM", "CHF") },
+    { href: "/admin/journal", label: "Journal d'audit", icon: "list", show: hasRole(profile, "ADM", "CHF") },
     { href: "/profil", label: "Mon profil", icon: "user", show: true },
   ];
   const initials = (profile.full_name || profile.email)
@@ -37,6 +46,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen bg-surface md:flex">
+      <IdleLogout minutes={settings.inactivite_minutes} />
       <aside className="border-b border-slate-200 bg-white md:sticky md:top-0 md:flex md:h-screen md:w-64 md:shrink-0 md:flex-col md:border-b-0 md:border-r">
         <div className="flex items-center gap-3 px-5 py-5">
           <Image src="/logo-mark.png" alt="" width={40} height={40} priority />

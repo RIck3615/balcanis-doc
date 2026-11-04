@@ -45,6 +45,9 @@ export default async function HeuresPage({ searchParams }: { searchParams: Promi
       <form className="flex items-end gap-2">
         <input type="month" name="mois" defaultValue={month} className={`${inputClass} max-w-xs`} />
         <button className="rounded-lg bg-navy px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-navy-dark">Afficher</button>
+        <a href={`/heures/export?mois=${month}`} className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-navy ring-1 ring-inset ring-slate-300 hover:bg-navy-light">
+          Exporter en CSV (paie)
+        </a>
       </form>
       {error && <p className="text-sm text-brand-red-dark">{error.message}</p>}
       {byAgent.size === 0 && <p className="text-sm text-slate-500">Aucune heure pour ce mois.</p>}

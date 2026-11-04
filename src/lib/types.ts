@@ -27,7 +27,6 @@ export interface AgentPayment {
 export interface StaffEntry {
   id: string;
   full_name: string;
-  email: string;
   agent_code: string | null;
   roles: AppRole[];
   office_code: string | null;

@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { isUuid } from "@/lib/ids";
+import { getSettings } from "@/lib/settings";
 import { getProfile, hasRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { actorCan, isDedicatedTransition } from "@/lib/permissions";
@@ -23,6 +25,7 @@ import {
 
 export default async function DossierPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (!isUuid(id)) notFound();
   const profile = await getProfile();
   const supabase = await createClient();
 
@@ -52,6 +55,8 @@ export default async function DossierPage({ params }: { params: Promise<{ id: st
     supabase.from("dossier_statuses").select("code, timer_open, billable").eq("code", d.status).single(),
   ]);
   const { data: formsData } = await supabase.rpc("dossier_forms", { p_dossier: id });
+  const { data: canDownload } = await supabase.rpc("can_download");
+  const settings = await getSettings();
   const forms = (formsData ?? []) as DossierForm[];
   const formsMissing = forms.filter((f) => !f.document_id).length;
 
@@ -185,7 +190,7 @@ export default async function DossierPage({ params }: { params: Promise<{ id: st
                     <span className="flex items-center gap-2">
                       {f.document_id && <OpenDocumentButton documentId={f.document_id} />}
                       {isProcessor && [30, 55, 75].includes(d.status) && (
-                        <FormUploadButton dossierId={id} person={f.person_code} type={f.type_code} hasVersion={!!f.document_id} />
+                        <FormUploadButton dossierId={id} person={f.person_code} type={f.type_code} hasVersion={!!f.document_id} maxMb={settings.taille_max_fichier_mo} />
                       )}
                     </span>
                   </li>
@@ -229,7 +234,7 @@ export default async function DossierPage({ params }: { params: Promise<{ id: st
           {/* Pièces, rangées par sous-dossier */}
           <Card
             title="Pièces du dossier"
-            actions={docList.length > 0 ? <DownloadDossierButton dossierId={id} hasOldVersions={docList.some((x) => !x.is_current)} /> : undefined}
+            actions={docList.length > 0 && canDownload ? <DownloadDossierButton dossierId={id} hasOldVersions={docList.some((x) => !x.is_current)} /> : undefined}
           >
             {docList.length === 0 && <Empty>Aucune pièce déposée.</Empty>}
             <div className="space-y-3">
@@ -254,7 +259,7 @@ export default async function DossierPage({ params }: { params: Promise<{ id: st
                           </span>
                           <span className="flex items-center gap-2">
                             <OpenDocumentButton documentId={doc.id} />
-                            <DownloadDocumentButton documentId={doc.id} />
+                            {canDownload && <DownloadDocumentButton documentId={doc.id} />}
                           </span>
                         </li>
                       ))}
@@ -268,7 +273,7 @@ export default async function DossierPage({ params }: { params: Promise<{ id: st
                               <span className="font-mono">{doc.file_name}</span>
                               <span className="flex items-center gap-2">
                             <OpenDocumentButton documentId={doc.id} />
-                            <DownloadDocumentButton documentId={doc.id} />
+                            {canDownload && <DownloadDocumentButton documentId={doc.id} />}
                           </span>
                             </li>
                           ))}
@@ -283,7 +288,7 @@ export default async function DossierPage({ params }: { params: Promise<{ id: st
 
           {canUpload && (
             <Card title="Déposer une pièce">
-              <DocumentUpload dossierId={id} members={memberList} categories={categoryList} types={typeList} />
+              <DocumentUpload dossierId={id} members={memberList} categories={categoryList} types={typeList} maxMb={settings.taille_max_fichier_mo} />
             </Card>
           )}
 

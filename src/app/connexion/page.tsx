@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -11,6 +11,11 @@ export default function ConnexionPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("raison") === "inactivite")
+      setNotice("Vous avez été déconnecté après une période d'inactivité.");
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -67,6 +72,7 @@ export default function ConnexionPage() {
               <span className="mb-1.5 block font-medium text-slate-700">Mot de passe</span>
               <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className={input} autoComplete="current-password" />
             </label>
+            {notice && !error && <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">{notice}</p>}
             {error && <p className="rounded-lg bg-brand-red-light px-3 py-2 text-sm text-brand-red-dark">{error}</p>}
             <button disabled={pending} className="w-full rounded-lg bg-navy py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-navy-dark disabled:opacity-50">
               {pending ? "Connexion…" : "Se connecter"}

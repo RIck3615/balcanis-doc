@@ -6,7 +6,7 @@ import { uploadDocument } from "@/lib/upload";
 import { buttonClass } from "./ui";
 
 // Téléversement d'un formulaire officiel rempli, pour une personne du dossier
-export function FormUploadButton({ dossierId, person, type, hasVersion }: { dossierId: string; person: string; type: string; hasVersion: boolean }) {
+export function FormUploadButton({ dossierId, person, type, hasVersion, maxMb }: { dossierId: string; person: string; type: string; hasVersion: boolean; maxMb?: number }) {
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState(false);
@@ -16,7 +16,7 @@ export function FormUploadButton({ dossierId, person, type, hasVersion }: { doss
     if (!file) return;
     setPending(true);
     setError(null);
-    const res = await uploadDocument({ dossierId, person, type, file });
+    const res = await uploadDocument({ dossierId, person, type, file, maxMb });
     setPending(false);
     if (input.current) input.current.value = "";
     if (res.error) setError(res.error);

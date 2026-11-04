@@ -9,9 +9,17 @@ export async function uploadDocument(args: {
   file: File;
   issuedOn?: string | null;
   expiresOn?: string | null;
+  maxMb?: number;
 }): Promise<{ fileName?: string; error?: string }> {
   const supabase = createClient();
   const { file } = args;
+  // vérification immédiate (la base et le stockage vérifient aussi de leur côté)
+  if (!["application/pdf", "image/jpeg", "image/png"].includes(file.type)) {
+    return { error: "Format refusé : seuls les fichiers PDF, JPG et PNG sont acceptés." };
+  }
+  if (args.maxMb && file.size > args.maxMb * 1024 * 1024) {
+    return { error: `Fichier trop volumineux : ${(file.size / 1048576).toFixed(1)} Mo (maximum ${args.maxMb} Mo).` };
+  }
   const ext = file.name.includes(".") ? file.name.split(".").pop()!.toLowerCase() : "";
   const { data, error } = await supabase.rpc("register_document", {
     p_dossier: args.dossierId,

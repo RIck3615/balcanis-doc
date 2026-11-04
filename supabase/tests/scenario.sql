@@ -266,4 +266,73 @@ select count(*) as formulaires_prol from public.program_forms where program_code
 select test.expect_error($$select public.save_form_type('IMM 1', 'X', 'http://pas-securise')$$, 'https://');
 select test.as_user('trt@balcanis.test');
 select test.expect_error($$select public.add_program_form('PE', 'FORMULAIRE-IMM5708', 'P')$$, 'rôle requis');
+-- =================== Sécurité (0012) ===================
+reset role;
+create function test.aal(p text) returns void language sql as $$
+  select set_config('request.jwt.claims', json_build_object('aal', p)::text, false);
+$$;
+grant execute on function test.aal(text) to authenticated;
+set role authenticated;
+-- téléchargement : refusé aux agents de traitement par défaut
+select test.as_user('trt@balcanis.test');
+select test.expect_error(format($$select public.log_document_access(%L, 'telechargement')$$,
+  (select id from public.documents where type_code = 'PASSEPORT' and is_current limit 1)), 'Téléchargement non autorisé');
+select public.log_document_access((select id from public.documents where type_code = 'PASSEPORT' and is_current limit 1), 'consultation');
+select test.as_user('chef@balcanis.test');
+select public.update_setting('telechargement_traitement', 'true');
+select test.as_user('trt@balcanis.test');
+select public.log_document_access((select id from public.documents where type_code = 'PASSEPORT' and is_current limit 1), 'telechargement');
+-- formats et tailles de fichiers
+select test.as_user('col2@balcanis.test');
+reset role;
+update public.profiles set available = true where email = 'col2@balcanis.test';
+set role authenticated;
+select test.expect_error(format($$select * from public.register_document(%L, 'P', 'PASSEPORT', 'exe')$$, (select v from ctx where k = 'auto1')), 'Format refusé');
+select test.expect_error(format($$select * from public.register_document(%L, 'P', 'PASSEPORT', 'pdf', 'application/pdf', 999999999)$$, (select v from ctx where k = 'auto1')), 'trop volumineux');
+-- double authentification obligatoire, appliquée par la base
+select test.as_user('chef@balcanis.test');
+select test.expect_error($$select public.update_setting('mfa_obligatoire', 'true')$$, 'votre propre double authentification');
+select test.aal('aal2');
+select public.update_setting('mfa_obligatoire', 'true');
+select test.as_user('trt@balcanis.test');
+select test.aal('aal1');
+select count(*) as dossiers_vus_sans_2fa, public.has_role('TRT') as role_sans_2fa from public.dossiers;
+select count(*) as notifs_sans_2fa from public.notifications;
+select test.expect_error(format($$select public.start_timer(%L)$$, (select v from ctx where k = 'dossier')), 'Seul');
+select test.aal('aal2');
+select count(*) > 0 as dossiers_vus_avec_2fa from public.dossiers;
+select test.as_user('chef@balcanis.test');
+select public.update_setting('mfa_obligatoire', 'false');
+select test.aal('aal1');
+-- compte désactivé : connexion bloquée, sessions fermées, plus aucun accès
+reset role;
+insert into auth.sessions (user_id) select id from auth.users where email = 'col@balcanis.test';
+set role authenticated;
+select public.admin_set_profile((select id from auth.users where email = 'col@balcanis.test'), null, '{COL}', 'KIN', '{}', null, false) is not null;
+reset role;
+select banned_until = 'infinity' as bloque, (select count(*) from auth.sessions s where s.user_id = u.id) as sessions
+from auth.users u where email = 'col@balcanis.test';
+set role authenticated;
+select test.as_user('col@balcanis.test');
+select count(*) as dossiers_vus_compte_desactive from public.dossiers;
+-- protection du chef du cabinet contre un administrateur
+reset role;
+insert into auth.users (id, email, raw_user_meta_data) values ('00000000-0000-0000-0000-000000000009', 'adm@balcanis.test', '{"full_name":"Admin"}');
+set role authenticated;
+select test.as_user('chef@balcanis.test');
+select (public.admin_set_profile((select id from auth.users where email = 'adm@balcanis.test'), null, '{ADM}', null, '{}', null, true)).agent_code;
+select test.as_user('adm@balcanis.test');
+select test.expect_error(format($$select public.admin_set_profile(%L, null, '{CHF,ADM}', 'KIN', '{}', null, false)$$, (select id from auth.users where email = 'chef@balcanis.test')), 'Seul le chef');
+select test.expect_error(format($$select public.reset_agent_password(%L)$$, (select id from auth.users where email = 'chef@balcanis.test')), 'Seul le chef');
+select test.expect_error($$select * from public.create_agent('x2@y.cd', 'Faux chef', '{CHF}')$$, 'Seul le chef');
+select count(*) as lignes_vue_securite from public.security_overview();
+select public.force_sign_out((select id from auth.users where email = 'trt@balcanis.test')) as sessions_fermees;
+select test.as_user('trt@balcanis.test');
+select test.expect_error($$select * from public.security_overview()$$, 'rôle requis');
+select test.expect_error($$select public.update_setting('telechargement_traitement', 'false')$$, 'rôle requis');
+select test.expect_error($$select public.notify(auth.uid(), null, 'x', 'y')$$, 'permission denied');
+select test.expect_error($$select public.set_audit_context('x', 'y')$$, 'permission denied');
+select count(*) as annuaire_avec_courriel from information_schema.columns where table_name = 'staff_directory' and column_name = 'email';
+reset role;
+select action from public.audit_log where object_type = 'app_settings' order by id;
 select 'SCÉNARIO RÉUSSI' as resultat;

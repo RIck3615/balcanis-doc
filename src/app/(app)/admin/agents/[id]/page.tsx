@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { isUuid } from "@/lib/ids";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ActionForm } from "@/components/ActionForm";
@@ -23,6 +24,7 @@ const ROLE_HELP: Record<string, string> = {
 export default async function AgentPage({ params }: { params: Promise<{ id: string }> }) {
   const me = await requireRole("ADM", "CHF");
   const { id } = await params;
+  if (!isUuid(id)) notFound();
   const supabase = await createClient();
   const [{ data: profile }, { data: offices }, { data: payment }, { data: dossiers }] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", id).maybeSingle(),

@@ -11,11 +11,12 @@ type Props = {
   members: Member[];
   categories: DocumentCategory[];
   types: DocumentType[];
+  maxMb?: number;
 };
 
 // Dépôt d'une pièce : la base génère le nom selon la nomenclature, puis le fichier
 // est envoyé à ce chemin. L'agent ne tape jamais de nom de fichier.
-export function DocumentUpload({ dossierId, members, categories, types }: Props) {
+export function DocumentUpload({ dossierId, members, categories, types, maxMb }: Props) {
   const router = useRouter();
   const [person, setPerson] = useState(members[0]?.person_code ?? "P");
   const [type, setType] = useState("");
@@ -30,7 +31,7 @@ export function DocumentUpload({ dossierId, members, categories, types }: Props)
     if (!file || !type) return;
     setPending(true);
     setMessage(null);
-    const res = await uploadDocument({ dossierId, person, type, file, issuedOn: issued, expiresOn: expires });
+    const res = await uploadDocument({ dossierId, person, type, file, issuedOn: issued, expiresOn: expires, maxMb });
     if (res.error) {
       setPending(false);
       setMessage({ error: res.error });
@@ -80,7 +81,7 @@ export function DocumentUpload({ dossierId, members, categories, types }: Props)
         </label>
       </div>
       <label className="block text-sm">
-        <span className="mb-1 block font-medium">Fichier (PDF de préférence, toutes les pages en un seul fichier)</span>
+        <span className="mb-1 block font-medium">Fichier (PDF, JPG ou PNG{maxMb ? `, ${maxMb} Mo maximum` : ""} ; toutes les pages en un seul fichier)</span>
         <input type="file" required accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="text-sm" />
       </label>
       <div className="flex flex-wrap items-center gap-3">

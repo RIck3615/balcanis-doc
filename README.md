@@ -20,6 +20,7 @@ Elle met en œuvre le document « Plateforme BalCanis : Cadrage fonctionnel de l
 | Notifications | Cloche avec compteur en temps réel et fenêtre d'alerte : nouveau dossier à collecter, collecte complète à assigner, dossier assigné, information client à obtenir, prêt au contrôle, renvoi, validation finale, soumission, décision, annulation, coordonnées de paiement à confirmer, dossier bloqué depuis 7 jours |
 | Bureaux | Création, modification et fermeture des bureaux par l'administrateur ou le chef ; chiffres par bureau ; un bureau fermé garde son historique mais n'accepte plus de nouveaux dossiers |
 | Journal d'audit | Chaque action est enregistrée (qui, quand, avant/après, motif), y compris la consultation des pièces. Le journal ne peut être ni modifié ni effacé |
+| Administration | Agents, bureaux, formulaires par programme, sécurité et paramètres (2FA obligatoire, téléchargement, inactivité, taille des fichiers), journal d'audit avec filtres et export CSV, export CSV des heures pour la paie |
 | Agents | Création des comptes par l'administrateur ou le chef (mot de passe temporaire à changer à la première connexion), réinitialisation du mot de passe, rôles, bureau, programmes certifiés, taux horaire ; chaque agent choisit son moyen et sa fréquence de paiement, l'administrateur confirme |
 
 **Pas encore fait** (phase 2) : portail client, module de formation et certification, tableaux de bord avancés, envoi des notifications par courriel ou WhatsApp, saisie des formulaires IRCC dans la plateforme, export comptable.
@@ -76,6 +77,40 @@ npm run dev                  # http://localhost:3000
 ```
 
 Mise en ligne : Vercel (ou tout hébergeur Node.js) avec les deux mêmes variables d'environnement.
+
+## Sécurité
+
+### Ce que fait l'application
+
+| Mesure | Détail |
+| --- | --- |
+| Règles appliquées par la base | Toutes les écritures passent par des fonctions PostgreSQL qui vérifient rôle, assignation et session ; lecture filtrée par RLS. Aucun accès anonyme |
+| Double authentification (2FA) | Code à 6 chiffres (application d'authentification). Peut être rendue obligatoire dans Administration > Sécurité ; elle est alors exigée par la base elle-même (niveau aal2), pas seulement par l'interface |
+| Comptes désactivés | Connexion bloquée, sessions fermées, plus aucun accès aux dossiers (même assignés), historique conservé |
+| Compte du chef protégé | Seul un chef peut modifier, désactiver, réinitialiser un chef ou attribuer ce rôle |
+| Mots de passe | Temporaire à la création, changement obligatoire à la première connexion ; réinitialisation par l'administration ferme les sessions |
+| Inactivité | Déconnexion automatique (30 min par défaut, réglable) |
+| Pièces | PDF, JPG, PNG uniquement, taille limitée (base et stockage) ; dépôt au seul chemin généré ; aucun remplacement ni suppression ; liens de 60 s |
+| Téléchargement | Réservé selon le rôle (agents de traitement : désactivé par défaut) ; chaque consultation et téléchargement est journalisé |
+| Journal d'audit | Inaltérable (ni modification ni effacement, même par l'administrateur), consultable et exportable dans Administration > Journal d'audit |
+| En-têtes HTTP | CSP, HSTS, X-Frame-Options DENY, nosniff, Referrer-Policy, Permissions-Policy, pages privées non mises en cache |
+| Exports CSV | Protégés contre l'injection de formules Excel |
+
+### Réglages à faire dans Supabase (une fois)
+
+1. **Authentication > Sign In / Providers** : désactiver les inscriptions publiques (*Allow new users to sign up* : non) ; garder seulement Email.
+2. **Authentication > Multi-Factor** : activer **TOTP** (nécessaire à la double authentification).
+3. **Authentication > Policies (ou Password)** : longueur minimale **10**, exiger lettres et chiffres ; activer la protection contre les mots de passe divulgués si votre offre le permet.
+4. **Authentication > URL Configuration** : *Site URL* = l'adresse de production de l'application.
+5. **Authentication > Rate Limits** : garder les limites par défaut (protection contre les tentatives de mot de passe).
+6. **Database > Backups** : vérifier les sauvegardes quotidiennes ; activer la restauration à un instant donné (PITR) pour la production.
+7. Ne jamais mettre la clé **service_role** dans l'application ni la partager : l'application n'en a pas besoin.
+
+### Après la mise en service
+
+- Activez votre propre 2FA (Mon profil), puis cochez « Double authentification obligatoire » dans Administration > Sécurité.
+- Désactivez immédiatement le compte d'un agent qui quitte le cabinet ; utilisez « Déconnecter partout » en cas de doute (appareil perdu).
+- Consultez régulièrement Administration > Sécurité (comptes sans 2FA, sans connexion depuis 30 jours) et le journal d'audit.
 
 ## Tester la base de données
 

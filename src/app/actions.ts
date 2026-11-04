@@ -349,3 +349,33 @@ export async function removeProgramFormAction(fd: FormData) {
   await rpc("remove_program_form", { p_id: Number(str(fd, "id")) });
   revalidatePath("/admin/formulaires");
 }
+
+// ---------------------------------------------------------------- sécurité et paramètres (ADM, CHF)
+export async function updateSettingsAction(_: ActionResult, fd: FormData): Promise<ActionResult> {
+  const updates: [string, unknown][] = [
+    ["telechargement_traitement", fd.get("telechargement_traitement") === "on"],
+    ["inactivite_minutes", Number(str(fd, "inactivite_minutes"))],
+    ["taille_max_fichier_mo", Number(str(fd, "taille_max_fichier_mo"))],
+    ["mfa_obligatoire", fd.get("mfa_obligatoire") === "on"],
+  ];
+  for (const [key, value] of updates) {
+    const res = await rpc("update_setting", { p_key: key, p_value: value });
+    if (res.error) return { error: res.error };
+  }
+  revalidatePath("/", "layout");
+  return { ok: "Paramètres enregistrés" };
+}
+
+export async function forceSignOutAction(_: ActionResult, fd: FormData): Promise<ActionResult> {
+  const res = await rpc("force_sign_out", { p_user: str(fd, "user") });
+  if (res.error) return { error: res.error };
+  revalidatePath("/admin/securite");
+  return { ok: `${res.data as number} session(s) fermée(s)` };
+}
+
+export async function resetMfaAction(_: ActionResult, fd: FormData): Promise<ActionResult> {
+  const res = await rpc("reset_mfa", { p_user: str(fd, "user") });
+  if (res.error) return { error: res.error };
+  revalidatePath("/admin/securite");
+  return { ok: "Double authentification réinitialisée" };
+}

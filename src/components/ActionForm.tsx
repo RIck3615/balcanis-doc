@@ -11,10 +11,11 @@ type Props = {
   className?: string;
   variant?: keyof typeof buttonClass;
   confirmMessage?: string;
+  size?: "md" | "sm";
 };
 
 // Formulaire relié à une action serveur, avec message d'erreur ou de succès
-export function ActionForm({ action, children, submitLabel, className, variant = "primary", confirmMessage }: Props) {
+export function ActionForm({ action, children, submitLabel, className, variant = "primary", confirmMessage, size = "md" }: Props) {
   const [state, formAction, pending] = useActionState(action, null);
   return (
     <form
@@ -29,7 +30,7 @@ export function ActionForm({ action, children, submitLabel, className, variant =
         <button
           type="submit"
           disabled={pending}
-          className={`rounded-lg px-4 py-2 text-sm font-medium transition disabled:opacity-50 ${buttonClass[variant]}`}
+          className={`whitespace-nowrap rounded-lg font-medium transition disabled:opacity-50 ${size === "sm" ? "px-3 py-1.5 text-xs" : "px-4 py-2 text-sm"} ${buttonClass[variant]}`}
         >
           {pending ? "Un instant…" : submitLabel}
         </button>
