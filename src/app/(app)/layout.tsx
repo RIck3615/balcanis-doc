@@ -6,6 +6,8 @@ import { signOut } from "@/app/actions";
 import { Nav, type NavItem } from "@/components/Nav";
 import { NotificationBell } from "@/components/NotificationBell";
 import { IdleLogout } from "@/components/IdleLogout";
+import { NavigationProgress } from "@/components/NavigationProgress";
+import { Suspense } from "react";
 import { getSettings } from "@/lib/settings";
 import { signAvatars } from "@/lib/avatars";
 import { Avatar } from "@/components/AgentBits";
@@ -45,6 +47,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen bg-surface md:flex">
       <IdleLogout minutes={settings.inactivite_minutes} />
+      <Suspense>
+        <NavigationProgress />
+      </Suspense>
       <aside className="border-b border-slate-200 bg-white md:sticky md:top-0 md:flex md:h-screen md:w-64 md:shrink-0 md:flex-col md:border-b-0 md:border-r">
         <div className="flex items-center gap-3 px-5 py-5">
           <Image src="/logo-mark.png" alt="" width={40} height={40} priority />

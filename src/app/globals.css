@@ -20,3 +20,23 @@ body {
 ::selection {
   background: var(--color-navy-light);
 }
+
+/* Chargement entre les pages : anneau aux couleurs de la marque et barre de progression */
+@keyframes bc-spin { to { transform: rotate(360deg); } }
+@keyframes bc-pulse { 0%, 100% { transform: scale(0.94); opacity: 0.85; } 50% { transform: scale(1); opacity: 1; } }
+@keyframes bc-dots { 0%, 80%, 100% { opacity: 0.25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+@keyframes bc-shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
+
+.bc-ring { animation: bc-spin 1.1s linear infinite; }
+.bc-ring-slow { animation: bc-spin 1.8s linear infinite reverse; }
+.bc-mark { animation: bc-pulse 1.6s ease-in-out infinite; }
+.bc-dot { animation: bc-dots 1.2s ease-in-out infinite; }
+.bc-skeleton {
+  background: linear-gradient(90deg, #e6eaf3 0%, #f4f6fb 40%, #e6eaf3 80%);
+  background-size: 800px 100%;
+  animation: bc-shimmer 1.4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bc-ring, .bc-ring-slow, .bc-mark, .bc-dot, .bc-skeleton { animation: none; }
+}
