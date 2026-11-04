@@ -19,5 +19,6 @@ export function actorCan(profile: Profile, d: Dossier, roles: AppRole[]): boolea
 
 // Transitions qui se font par une action dédiée, pas par un simple bouton
 export function isDedicatedTransition(from: number, to: number): boolean {
-  return to === 20 || to === 40 || to === 80 || (from === 50 && (to === 55 || to === 60));
+  // 85 et le retour 85 → 80 se font automatiquement par les demandes de l'autorité
+  return to === 20 || to === 40 || to === 80 || to === 85 || (from === 50 && (to === 55 || to === 60));
 }

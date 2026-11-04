@@ -32,6 +32,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/dossiers", label: "Dossiers", icon: "folder", show: true },
     { href: "/dossiers/nouveau", label: "Ouvrir un dossier", icon: "plus", show: hasRole(profile, "GBR", "CHF", "ADM") },
     { href: "/controle", label: "File de contrôle", icon: "check", show: hasRole(profile, "CTL") },
+    { href: "/suivi", label: "Suivi IRCC", icon: "inbox", show: hasRole(profile, "GBR", "CHF", "ADM", "TRT", "COL") },
     { href: "/heures", label: "Heures et paie", icon: "clock", show: hasRole(profile, "TRT", "GBR", "CHF", "ADM") },
     { href: "/admin/agents", label: "Agents", icon: "users", show: hasRole(profile, "ADM", "CHF") },
     { href: "/admin/bureaux", label: "Bureaux", icon: "building", show: hasRole(profile, "ADM", "CHF") },

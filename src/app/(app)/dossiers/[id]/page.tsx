@@ -10,7 +10,7 @@ import {
   RETURN_REASONS, STATUS_LABELS, formatDate, formatDateTime, formatDuration, pad2, personLabel,
 } from "@/lib/labels";
 import type {
-  AuditEntry, ChecklistItem, Client, DossierForm, DocumentCategory, DocumentRow, DocumentType, Dossier, Member,
+  AuditEntry, AuthorityRequest, ChecklistItem, Client, DossierForm, DocumentCategory, DocumentRow, DocumentType, Dossier, Member,
   Review, StaffEntry, StatusTransition, TimeSession,
 } from "@/lib/types";
 import { ActionForm } from "@/components/ActionForm";
@@ -19,6 +19,7 @@ import { DocumentUpload } from "@/components/DocumentUpload";
 import { OpenDocumentButton } from "@/components/OpenDocumentButton";
 import { DownloadDocumentButton, DownloadDossierButton } from "@/components/DownloadButtons";
 import { FormUploadButton } from "@/components/FormUploadButton";
+import { RequestsPanel } from "@/components/RequestsPanel";
 import { Timer } from "@/components/Timer";
 import {
   addMemberAction, assignAction, correctSessionAction, submitDossierAction, submitReviewAction,
@@ -58,6 +59,8 @@ export default async function DossierPage({ params }: { params: Promise<{ id: st
   ]);
   const { data: formsData } = await supabase.rpc("dossier_forms", { p_dossier: id });
   const { data: canDownload } = await supabase.rpc("can_download");
+  const { data: requestsData } = await supabase.from("authority_requests").select("*").eq("dossier_id", id).order("due_on");
+  const requests = (requestsData ?? []) as AuthorityRequest[];
   const settings = await getSettings();
   const forms = (formsData ?? []) as DossierForm[];
   const formsMissing = forms.filter((f) => !f.document_id).length;
@@ -157,6 +160,21 @@ export default async function DossierPage({ params }: { params: Promise<{ id: st
               {d.decision && <div className="sm:col-span-2"><dt className="text-xs text-slate-500">Décision</dt><dd>{d.decision}</dd></div>}
             </dl>
           </Card>
+
+          {/* Suivi après la soumission */}
+          {[80, 85, 90].includes(d.status) && (
+            <RequestsPanel
+              dossier={d}
+              requests={requests}
+              canManage={actorCan(profile, d, ["GBR", "CHF"])}
+              isChief={hasRole(profile, "CHF")}
+              myAssigneeRoles={[
+                ...(d.collector_id === profile.id ? (["COL"] as const) : []),
+                ...(d.processor_id === profile.id ? (["TRT"] as const) : []),
+              ]}
+              nameOf={(role) => nameOf(role === "COL" ? d.collector_id : d.processor_id)}
+            />
+          )}
 
           {/* Formulaires officiels du programme */}
           {d.status >= 20 && d.status !== 99 && forms.length > 0 && (

@@ -23,6 +23,7 @@ export const STATUS_LABELS: Record<number, string> = {
   70: "En validation finale",
   75: "Retourné par le chef",
   80: "Soumis",
+  85: "Complément demandé",
   90: "Fermé",
   99: "Annulé",
 };
@@ -30,7 +31,7 @@ export const STATUS_LABELS: Record<number, string> = {
 // Couleur par phase : collecte, traitement, contrôle, chef, terminé, retour
 export function statusTone(status: number): string {
   if (status === 55 || status === 75) return "bg-amber-50 text-amber-800 ring-amber-200";
-  if (status === 35) return "bg-orange-50 text-orange-800 ring-orange-200";
+  if (status === 35 || status === 85) return "bg-orange-50 text-orange-800 ring-orange-200";
   if (status === 99) return "bg-slate-100 text-slate-500 ring-slate-200";
   if (status >= 80) return "bg-emerald-50 text-emerald-800 ring-emerald-200";
   if (status >= 60) return "bg-brand-red-light text-brand-red-dark ring-brand-red/20";
@@ -85,4 +86,35 @@ export function formatDuration(ms: number): string {
 
 export function daysSince(value: string): number {
   return Math.floor((Date.now() - new Date(value).getTime()) / 86400000);
+}
+
+export const REQUEST_KINDS: Record<string, string> = {
+  pieces: "Pièces supplémentaires",
+  biometrie: "Biométrie",
+  examen_medical: "Examen médical",
+  entrevue: "Entrevue",
+  passeport: "Passeport à envoyer",
+  formulaire: "Formulaire à remplir",
+  autre: "Autre",
+};
+
+export const REQUEST_STATUS: Record<string, string> = {
+  a_faire: "À préparer",
+  prete: "Prête à envoyer",
+  repondue: "Répondue",
+  annulee: "Annulée",
+};
+
+// Jours restants avant une date (négatif = en retard)
+export function daysUntil(date: string): number {
+  const today = new Date(new Date().toISOString().slice(0, 10));
+  return Math.round((new Date(date).getTime() - today.getTime()) / 86400000);
+}
+
+export function dueLabel(date: string): { text: string; tone: string } {
+  const n = daysUntil(date);
+  if (n < 0) return { text: `En retard de ${-n} j`, tone: "bg-brand-red text-white" };
+  if (n === 0) return { text: "Aujourd'hui", tone: "bg-brand-red-light text-brand-red-dark ring-1 ring-brand-red/30" };
+  if (n <= 3) return { text: `Dans ${n} j`, tone: "bg-amber-50 text-amber-800 ring-1 ring-amber-200" };
+  return { text: `Dans ${n} j`, tone: "bg-slate-100 text-slate-700" };
 }

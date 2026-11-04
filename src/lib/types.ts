@@ -192,3 +192,20 @@ export interface NotificationRow {
   created_at: string;
   read_at: string | null;
 }
+
+export interface AuthorityRequest {
+  id: string;
+  dossier_id: string;
+  kind: string;
+  title: string;
+  details: string | null;
+  received_on: string;
+  due_on: string;
+  assignee_role: "COL" | "TRT";
+  status: "a_faire" | "prete" | "repondue" | "annulee";
+  ready_note: string | null;
+  ready_at: string | null;
+  sent_on: string | null;
+  cancel_reason: string | null;
+  created_at: string;
+}

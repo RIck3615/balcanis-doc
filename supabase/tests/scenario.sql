@@ -349,4 +349,47 @@ insert into storage.objects (bucket_id, name) values ('avatars', auth.uid()::tex
 select test.as_user('chef@balcanis.test');
 select public.set_avatar((select id from auth.users where email = 'trt@balcanis.test'), null) is not null as retiree_par_chef;
 select count(*) > 0 as avatars_dans_annuaire from information_schema.columns where table_name = 'staff_directory' and column_name = 'avatar_path';
+-- Suivi après la soumission (0014)
+reset role;
+-- préparation : un dossier soumis, avec collecte et traitement assignés
+update public.dossiers set status = 80, processor_id = (select id from auth.users where email = 'trt@balcanis.test'),
+  submission_number = 'E00999', submitted_at = now()
+where id = (select v::uuid from ctx where k = 'auto1');
+set role authenticated;
+select test.as_user('trt@balcanis.test');
+select test.expect_error(format($$select public.add_authority_request(%L, 'pieces', 'Relevés bancaires', null, current_date, current_date + 10, 'TRT')$$,
+  (select v from ctx where k = 'auto1')), 'Seuls le gestionnaire');
+select test.as_user('chef@balcanis.test');
+insert into ctx select 'req1', public.add_authority_request((select v::uuid from ctx where k = 'auto1'), 'pieces',
+  'Relevés bancaires des 6 derniers mois', 'Lettre IRCC du 3 nov.', current_date, current_date + 3, 'TRT');
+insert into ctx select 'req2', public.add_authority_request((select v::uuid from ctx where k = 'auto1'), 'biometrie',
+  'Biométrie', null, current_date, current_date - 0, 'COL');
+select status as statut_apres_demande from public.dossiers where id = (select v::uuid from ctx where k = 'auto1');
+select test.expect_error(format($$select public.transition_dossier(%L, 90::smallint, 'Accepté')$$, (select v from ctx where k = 'auto1')), 'Transition interdite');
+reset role;
+select public.notify_request_deadlines() as rappels_envoyes;
+select public.notify_request_deadlines() as rappels_en_double;
+set role authenticated;
+-- l'agent de traitement prépare ; un autre agent ne peut pas
+select test.as_user('trt2@balcanis.test');
+select test.expect_error(format($$select public.mark_request_ready(%L, 'x')$$, (select v from ctx where k = 'req1')), 'introuvable');
+select test.as_user('trt@balcanis.test');
+select status, public.has_role('TRT') from public.dossiers where id = (select v::uuid from ctx where k = 'auto1');
+select public.start_timer((select v::uuid from ctx where k = 'auto1')) is not null as chrono_au_statut_85;
+select public.stop_timer();
+select public.mark_request_ready((select v::uuid from ctx where k = 'req1'), 'Relevés déposés dans 06_FINANCES');
+select test.expect_error(format($$select public.mark_request_answered(%L, current_date)$$, (select v from ctx where k = 'req1')), 'rôle requis');
+-- le chef envoie ; le dossier reste à 85 tant que la biométrie est ouverte
+select test.as_user('chef@balcanis.test');
+select public.mark_request_answered((select v::uuid from ctx where k = 'req1'), current_date, 'Envoyé par le portail');
+select status as statut_une_ouverte from public.dossiers where id = (select v::uuid from ctx where k = 'auto1');
+select test.expect_error(format($$select public.cancel_request(%L, '')$$, (select v from ctx where k = 'req2')), 'Motif');
+select public.cancel_request((select v::uuid from ctx where k = 'req2'), 'Biométrie encore valide');
+select status as statut_tout_ferme from public.dossiers where id = (select v::uuid from ctx where k = 'auto1');
+select public.transition_dossier((select v::uuid from ctx where k = 'auto1'), 90::smallint, 'Visa accordé');
+select title, status, sent_on is not null as envoye from public.authority_requests order by created_at;
+reset role;
+select p.agent_code, n.kind, n.title from public.notifications n join public.profiles p on p.id = n.user_id
+where n.dossier_id = (select v::uuid from ctx where k = 'auto1') and n.kind in ('demande_autorite', 'echeance') order by n.id;
+set role authenticated;
 select 'SCÉNARIO RÉUSSI' as resultat;

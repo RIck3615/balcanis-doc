@@ -1,6 +1,8 @@
 import { getProfile, hasRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import type { DossierWithClient } from "@/lib/types";
+import type { AuthorityRequest, DossierWithClient } from "@/lib/types";
+import Link from "next/link";
+import { REQUEST_STATUS, dueLabel } from "@/lib/labels";
 import { DossierTable } from "@/components/DossierTable";
 import { Card, PageTitle, StatTile, StatusBadge } from "@/components/ui";
 import { daysSince } from "@/lib/labels";
@@ -14,6 +16,18 @@ export default async function Dashboard() {
     .order("status_changed_at", { ascending: true })
     .limit(1000);
   const dossiers = (data ?? []) as DossierWithClient[];
+  const { data: reqData } = await supabase
+    .from("authority_requests")
+    .select("*, dossiers(number, collector_id, processor_id)")
+    .in("status", ["a_faire", "prete"])
+    .order("due_on")
+    .limit(200);
+  type Req = AuthorityRequest & { dossiers: { number: string; collector_id: string | null; processor_id: string | null } | null };
+  const reqs = ((reqData ?? []) as Req[]).filter((r) =>
+    hasRole(profile, "CHF", "GBR", "ADM") ||
+    (r.status === "a_faire" &&
+      ((r.assignee_role === "COL" && r.dossiers?.collector_id === profile.id) || (r.assignee_role === "TRT" && r.dossiers?.processor_id === profile.id))),
+  );
   const open = dossiers.filter((d) => d.status < 90);
   const me = profile.id;
 
@@ -86,6 +100,26 @@ export default async function Dashboard() {
               </div>
             ))}
           </div>
+        </Card>
+      )}
+
+      {reqs.length > 0 && (
+        <Card title={`Demandes de l'autorité à suivre (${reqs.length})`} actions={<Link href="/suivi" className="text-sm font-medium text-navy hover:text-brand-red">Tout voir</Link>}>
+          <ul className="-mx-5 divide-y divide-slate-100">
+            {reqs.slice(0, 6).map((r) => {
+              const due = dueLabel(r.due_on);
+              return (
+                <li key={r.id}>
+                  <Link href={`/dossiers/${r.dossier_id}`} className="flex flex-wrap items-center gap-3 px-5 py-3 transition hover:bg-navy-light/40">
+                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${due.tone}`}>{due.text}</span>
+                    <span className="font-mono text-[13px] text-navy">{r.dossiers?.number}</span>
+                    <span className="min-w-0 flex-1 truncate text-sm text-slate-900">{r.title}</span>
+                    <span className="text-xs text-slate-500">{REQUEST_STATUS[r.status]}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
         </Card>
       )}
 

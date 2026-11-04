@@ -379,3 +379,45 @@ export async function resetMfaAction(_: ActionResult, fd: FormData): Promise<Act
   revalidatePath("/admin/securite");
   return { ok: "Double authentification réinitialisée" };
 }
+
+// ---------------------------------------------------------------- suivi après la soumission
+export async function addRequestAction(_: ActionResult, fd: FormData): Promise<ActionResult> {
+  const dossier = str(fd, "dossier");
+  const res = await rpc("add_authority_request", {
+    p_dossier: dossier,
+    p_kind: str(fd, "kind"),
+    p_title: str(fd, "title"),
+    p_details: optional(fd, "details"),
+    p_received: optional(fd, "received_on"),
+    p_due: optional(fd, "due_on"),
+    p_assignee_role: str(fd, "assignee_role"),
+  });
+  if (res.error) return { error: res.error };
+  revalidatePath(`/dossiers/${dossier}`);
+  revalidatePath("/suivi");
+  return { ok: "Demande enregistrée ; l'agent est prévenu" };
+}
+
+export async function markRequestReadyAction(_: ActionResult, fd: FormData): Promise<ActionResult> {
+  const res = await rpc("mark_request_ready", { p_request: str(fd, "request"), p_note: str(fd, "note") });
+  if (res.error) return { error: res.error };
+  revalidatePath(`/dossiers/${str(fd, "dossier")}`);
+  revalidatePath("/suivi");
+  return { ok: "Marquée prête ; le chef du cabinet est prévenu" };
+}
+
+export async function markRequestAnsweredAction(_: ActionResult, fd: FormData): Promise<ActionResult> {
+  const res = await rpc("mark_request_answered", { p_request: str(fd, "request"), p_sent_on: str(fd, "sent_on"), p_note: optional(fd, "note") });
+  if (res.error) return { error: res.error };
+  revalidatePath(`/dossiers/${str(fd, "dossier")}`);
+  revalidatePath("/suivi");
+  return { ok: "Réponse enregistrée" };
+}
+
+export async function cancelRequestAction(_: ActionResult, fd: FormData): Promise<ActionResult> {
+  const res = await rpc("cancel_request", { p_request: str(fd, "request"), p_reason: str(fd, "reason") });
+  if (res.error) return { error: res.error };
+  revalidatePath(`/dossiers/${str(fd, "dossier")}`);
+  revalidatePath("/suivi");
+  return { ok: "Demande annulée" };
+}

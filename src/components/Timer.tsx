@@ -69,7 +69,7 @@ export function Timer({ dossierId, canRun, billable, active }: Props) {
             ? billable
               ? "Démarrez le chronomètre quand vous travaillez sur ce dossier. Le temps est payé après acceptation au contrôle."
               : "Correction : le temps est mesuré mais non payé (règle actuelle du cabinet)."
-            : "Le chronomètre ne fonctionne qu'aux statuts En traitement, À corriger et Retourné par le chef."}
+            : "Le chronomètre fonctionne aux statuts En traitement, À corriger, Retourné par le chef et Complément demandé."}
         </p>
       )}
       <div className="flex gap-2">

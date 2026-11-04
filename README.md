@@ -14,6 +14,7 @@ Elle met en œuvre le document « Plateforme BalCanis : Cadrage fonctionnel de l
 | Pièces | Dépôt depuis le navigateur ; le système génère le nom (`BC-KIN-2026-00042_P_01_PASSEPORT_20261101_v01.pdf`) et le sous-dossier (`01_IDENTITE`). Versions conservées, pièces obligatoires manquantes affichées |
 | Circuit | Statuts 00 à 99, transitions autorisées par rôle, motif obligatoire pour les retours, réassignations et annulations |
 | Formulaires officiels | Liste des formulaires IRCC à remplir par programme (ex. IMM 1294, IMM 5645, IMM 5476 pour un permis d'études), téléversement par l'agent de traitement avec nom conforme à la nomenclature, blocage de l'envoi au contrôle tant qu'un formulaire manque, liste modifiable dans Administration > Formulaires |
+| Suivi après la soumission | Demandes de l'autorité (biométrie, examen médical, pièces supplémentaires, entrevue, passeport…) avec date limite ; préparées par l'agent de collecte ou de traitement, envoyées par le chef ; statut 85 « Complément demandé » tant qu'une demande est ouverte ; décision impossible tant qu'il en reste ; rappels 7, 3 et 1 jour(s) avant et en cas de retard ; page Suivi IRCC |
 | Contrôle qualité | Auto-vérification par l'agent de traitement, liste de contrôle par le contrôleur, renvois numérotés (`…-R01`) avec motifs. Le contrôleur ne peut jamais être le traitant |
 | Validation | Seul le chef du cabinet valide et soumet (aucune délégation) ; numéro de demande obligatoire |
 | Temps et paie | Chronomètre par dossier, pause automatique après 10 minutes d'inactivité, temps du statut 55 mesuré mais non payé, validation des heures après le contrôle, corrections avec motif, relevé mensuel par agent |
@@ -65,6 +66,12 @@ Dans Supabase, activez l'extension **pg_cron** (Database > Extensions), puis ex�
 
 ```sql
 select cron.schedule('dossiers-bloques', '0 7 * * *', $$select public.notify_stale_dossiers(7)$$);
+```
+
+Pour les rappels d'échéance des demandes de l'autorité (après la soumission), ajoutez :
+
+```sql
+select cron.schedule('echeances-autorite', '5 7 * * *', $$select public.notify_request_deadlines()$$);
 ```
 
 Chaque matin à 7 h UTC (8 h à Kinshasa), les gestionnaires reçoivent une notification pour chaque dossier de leur bureau resté 7 jours ou plus dans le même statut.
