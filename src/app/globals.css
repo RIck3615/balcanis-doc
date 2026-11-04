@@ -40,3 +40,22 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .bc-ring, .bc-ring-slow, .bc-mark, .bc-dot, .bc-skeleton { animation: none; }
 }
+
+/* Transition entre les pages : la nouvelle page apparaît en fondu avec une légère montée,
+   et ses blocs arrivent l'un après l'autre (décalage de 45 ms) */
+@keyframes bc-page-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.bc-page { animation: bc-page-in 320ms cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+.bc-page > * > * { animation: bc-page-in 420ms cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+.bc-page > * > *:nth-child(1) { animation-delay: 0ms; }
+.bc-page > * > *:nth-child(2) { animation-delay: 45ms; }
+.bc-page > * > *:nth-child(3) { animation-delay: 90ms; }
+.bc-page > * > *:nth-child(4) { animation-delay: 135ms; }
+.bc-page > * > *:nth-child(5) { animation-delay: 180ms; }
+.bc-page > * > *:nth-child(n + 6) { animation-delay: 220ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bc-page, .bc-page > * > * { animation: none; }
+}
