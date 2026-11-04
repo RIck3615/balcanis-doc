@@ -26,6 +26,8 @@ export function DocumentUpload({ dossierId, members, categories, types, maxMb }:
   const [message, setMessage] = useState<{ error?: string; ok?: string } | null>(null);
   const [pending, setPending] = useState(false);
 
+  const expiryRequired = types.find((t) => t.code === type)?.expiry_required ?? false;
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!file || !type) return;
@@ -76,8 +78,10 @@ export function DocumentUpload({ dossierId, members, categories, types, maxMb }:
           <input type="date" value={issued} onChange={(e) => setIssued(e.target.value)} className={input} />
         </label>
         <label className="text-sm">
-          <span className="mb-1 block font-medium">Date d&apos;expiration (facultatif)</span>
-          <input type="date" value={expires} onChange={(e) => setExpires(e.target.value)} className={input} />
+          <span className="mb-1 block font-medium">
+            Date d&apos;expiration {expiryRequired ? <span className="text-brand-red">(obligatoire)</span> : "(facultatif)"}
+          </span>
+          <input type="date" required={expiryRequired} min={issued || undefined} value={expires} onChange={(e) => setExpires(e.target.value)} className={input} />
         </label>
       </div>
       <label className="block text-sm">

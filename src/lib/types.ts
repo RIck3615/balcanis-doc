@@ -114,6 +114,24 @@ export interface DocumentType {
   category_code: string;
   form_number?: string | null;
   official_url?: string | null;
+  expiry_required?: boolean;
+}
+
+export interface ExpiringDocument {
+  document_id: string;
+  dossier_id: string;
+  dossier_number: string;
+  dossier_status: number;
+  office_code: string;
+  person_code: string;
+  person_name: string;
+  type_code: string;
+  type_label: string;
+  file_name: string;
+  expires_on: string;
+  days_left: number;
+  collector_id: string | null;
+  processor_id: string | null;
 }
 
 export interface DossierForm {

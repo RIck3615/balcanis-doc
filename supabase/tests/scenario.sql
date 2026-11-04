@@ -71,9 +71,11 @@ select test.expect_error(format($$select public.transition_dossier(%L, 15::small
 select * from public.missing_documents((select v::uuid from ctx where k = 'dossier'));
 select r.file_name, r.storage_path
 from unnest(array['PASSEPORT','ACTE-NAISSANCE','PHOTO','CONTRAT','MANDAT-REPRESENTATION','CONSENTEMENT','LETTRE-ADMISSION','PREUVE-FONDS']) t,
-lateral public.register_document((select v::uuid from ctx where k = 'dossier'), 'P', t, 'pdf') r;
+lateral public.register_document((select v::uuid from ctx where k = 'dossier'), 'P', t, 'pdf', null, null, null,
+  case when t in ('PASSEPORT', 'LETTRE-ADMISSION') then current_date + 400 end) r;
 -- nouvelle version du passeport
-select file_name from public.register_document((select v::uuid from ctx where k = 'dossier'), 'P', 'PASSEPORT', 'pdf');
+select test.expect_error(format($$select * from public.register_document(%L, 'P', 'PASSEPORT', 'pdf')$$, (select v from ctx where k = 'dossier')), 'Date d''expiration obligatoire');
+select file_name from public.register_document((select v::uuid from ctx where k = 'dossier'), 'P', 'PASSEPORT', 'pdf', null, null, null, current_date + 60);
 select type_code, version, is_current from public.documents where type_code = 'PASSEPORT' order by version;
 select public.transition_dossier((select v::uuid from ctx where k = 'dossier'), 15::smallint);
 
@@ -103,7 +105,8 @@ select person_code, form_number, document_id is not null as televerse from publi
 select test.expect_error(format($$select public.submit_review(%L, 'auto', %L::jsonb)$$, (select v from ctx where k = 'dossier'),
   (select jsonb_agg(jsonb_build_object('item_id', id, 'answer', 'conforme')) from public.checklist_items where level = 'auto')), 'Formulaires à téléverser');
 select r.file_name from unnest(array['FORMULAIRE-IMM5476','FORMULAIRE-IMM1294','FORMULAIRE-IMM5645']) t,
-  lateral public.register_document((select v::uuid from ctx where k = 'dossier'), 'P', t, 'pdf') r;
+  lateral public.register_document((select v::uuid from ctx where k = 'dossier'), 'P', t, 'pdf', null, null, null,
+  case when t in ('PASSEPORT', 'LETTRE-ADMISSION') then current_date + 400 end) r;
 select count(*) filter (where document_id is null) as formulaires_manquants from public.dossier_forms((select v::uuid from ctx where k = 'dossier'));
 select public.submit_review((select v::uuid from ctx where k = 'dossier'), 'auto',
   (select jsonb_agg(jsonb_build_object('item_id', id, 'answer', 'conforme')) from public.checklist_items where level = 'auto')) is not null as auto_ok;
@@ -391,5 +394,27 @@ select title, status, sent_on is not null as envoye from public.authority_reques
 reset role;
 select p.agent_code, n.kind, n.title from public.notifications n join public.profiles p on p.id = n.user_id
 where n.dossier_id = (select v::uuid from ctx where k = 'auto1') and n.kind in ('demande_autorite', 'echeance') order by n.id;
+set role authenticated;
+-- Alertes d'expiration (0015)
+reset role;
+-- un dossier en cours avec des pièces qui expirent : rouvert pour le test
+update public.dossiers set status = 30 where id = (select v::uuid from ctx where k = 'dossier');
+insert into public.documents (dossier_id, person_code, category_code, type_code, version, file_name, storage_path, expires_on, is_current)
+select (select v::uuid from ctx where k = 'dossier'), 'P', '04', 'RESULTAT-TEF', 1, 'tef.pdf', 'x/04/tef.pdf', current_date + 30, true;
+insert into public.documents (dossier_id, person_code, category_code, type_code, version, file_name, storage_path, expires_on, is_current)
+select (select v::uuid from ctx where k = 'dossier'), 'P', '08', 'CERTIFICAT-POLICE', 1, 'police.pdf', 'x/08/police.pdf', current_date - 14, true;
+set role authenticated;
+select test.as_user('trt@balcanis.test');
+select type_code, days_left from public.document_expirations(90) order by days_left;
+select test.as_user('ctl@balcanis.test');
+select count(*) as expirations_vues_par_ctl from public.document_expirations(90);
+select test.as_user('trt@balcanis.test');
+select public.set_document_expiry((select id from public.documents where type_code = 'RESULTAT-TEF'), current_date + 7);
+select test.expect_error(format($$select public.set_document_expiry(%L, null)$$, (select id from public.documents where type_code = 'RESULTAT-TEF')), 'obligatoire');
+reset role;
+select public.notify_document_expirations() as rappels;
+select public.notify_document_expirations() as rappels_en_double;
+select p.agent_code, n.title, n.body from public.notifications n join public.profiles p on p.id = n.user_id
+where n.kind = 'expiration' order by n.id;
 set role authenticated;
 select 'SCÉNARIO RÉUSSI' as resultat;

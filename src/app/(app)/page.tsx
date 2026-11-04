@@ -1,8 +1,8 @@
 import { getProfile, hasRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import type { AuthorityRequest, DossierWithClient } from "@/lib/types";
+import type { AuthorityRequest, DossierWithClient, ExpiringDocument } from "@/lib/types";
 import Link from "next/link";
-import { REQUEST_STATUS, dueLabel } from "@/lib/labels";
+import { REQUEST_STATUS, dueLabel, expiryLabel, formatDate } from "@/lib/labels";
 import { DossierTable } from "@/components/DossierTable";
 import { Card, PageTitle, StatTile, StatusBadge } from "@/components/ui";
 import { daysSince } from "@/lib/labels";
@@ -27,6 +27,10 @@ export default async function Dashboard() {
     hasRole(profile, "CHF", "GBR", "ADM") ||
     (r.status === "a_faire" &&
       ((r.assignee_role === "COL" && r.dossiers?.collector_id === profile.id) || (r.assignee_role === "TRT" && r.dossiers?.processor_id === profile.id))),
+  );
+  const { data: expData } = await supabase.rpc("document_expirations", { p_days: 30 });
+  const expiring = ((expData ?? []) as ExpiringDocument[]).filter(
+    (x) => hasRole(profile, "CHF", "GBR", "ADM") || x.collector_id === profile.id || x.processor_id === profile.id,
   );
   const open = dossiers.filter((d) => d.status < 90);
   const me = profile.id;
@@ -115,6 +119,26 @@ export default async function Dashboard() {
                     <span className="font-mono text-[13px] text-navy">{r.dossiers?.number}</span>
                     <span className="min-w-0 flex-1 truncate text-sm text-slate-900">{r.title}</span>
                     <span className="text-xs text-slate-500">{REQUEST_STATUS[r.status]}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      )}
+
+      {expiring.length > 0 && (
+        <Card title={`Pièces qui expirent sous 30 jours (${expiring.length})`} actions={<Link href="/expirations" className="text-sm font-medium text-navy hover:text-brand-red">Tout voir</Link>}>
+          <ul className="-mx-5 divide-y divide-slate-100">
+            {expiring.slice(0, 6).map((x) => {
+              const e = expiryLabel(x.days_left);
+              return (
+                <li key={x.document_id}>
+                  <Link href={`/dossiers/${x.dossier_id}`} className="flex flex-wrap items-center gap-3 px-5 py-3 transition hover:bg-navy-light/40">
+                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${e.tone}`}>{e.text}</span>
+                    <span className="font-mono text-[13px] text-navy">{x.dossier_number}</span>
+                    <span className="min-w-0 flex-1 truncate text-sm text-slate-900">{x.type_label} · {x.person_code} {x.person_name}</span>
+                    <span className="text-xs text-slate-500">{formatDate(x.expires_on)}</span>
                   </Link>
                 </li>
               );

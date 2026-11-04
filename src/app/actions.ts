@@ -414,6 +414,15 @@ export async function markRequestAnsweredAction(_: ActionResult, fd: FormData): 
   return { ok: "Réponse enregistrée" };
 }
 
+export async function setDocumentExpiryAction(_: ActionResult, fd: FormData): Promise<ActionResult> {
+  const res = await rpc("set_document_expiry", { p_document: str(fd, "document"), p_expires_on: str(fd, "expires_on") || null });
+  if (res.error) return { error: res.error };
+  revalidatePath(`/dossiers/${str(fd, "dossier")}`);
+  revalidatePath("/expirations");
+  revalidatePath("/");
+  return { ok: "Date enregistrée" };
+}
+
 export async function cancelRequestAction(_: ActionResult, fd: FormData): Promise<ActionResult> {
   const res = await rpc("cancel_request", { p_request: str(fd, "request"), p_reason: str(fd, "reason") });
   if (res.error) return { error: res.error };

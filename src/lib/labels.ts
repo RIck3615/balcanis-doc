@@ -111,6 +111,15 @@ export function daysUntil(date: string): number {
   return Math.round((new Date(date).getTime() - today.getTime()) / 86400000);
 }
 
+// Échéance d'une pièce (passeport, test de langue, certificat de police…)
+export function expiryLabel(days: number): { text: string; tone: string } {
+  if (days < 0) return { text: `Expirée depuis ${-days} j`, tone: "bg-brand-red text-white" };
+  if (days === 0) return { text: "Expire aujourd'hui", tone: "bg-brand-red text-white" };
+  if (days <= 30) return { text: `Expire dans ${days} j`, tone: "bg-brand-red-light text-brand-red-dark ring-1 ring-brand-red/30" };
+  if (days <= 90) return { text: `Expire dans ${days} j`, tone: "bg-amber-50 text-amber-800 ring-1 ring-amber-200" };
+  return { text: "Valide", tone: "bg-emerald-50 text-emerald-700" };
+}
+
 export function dueLabel(date: string): { text: string; tone: string } {
   const n = daysUntil(date);
   if (n < 0) return { text: `En retard de ${-n} j`, tone: "bg-brand-red text-white" };

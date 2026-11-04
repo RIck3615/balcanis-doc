@@ -7,7 +7,7 @@ import { getProfile, hasRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { actorCan, isDedicatedTransition } from "@/lib/permissions";
 import {
-  RETURN_REASONS, STATUS_LABELS, formatDate, formatDateTime, formatDuration, pad2, personLabel,
+  RETURN_REASONS, STATUS_LABELS, daysUntil, expiryLabel, formatDate, formatDateTime, formatDuration, pad2, personLabel,
 } from "@/lib/labels";
 import type {
   AuditEntry, AuthorityRequest, ChecklistItem, Client, DossierForm, DocumentCategory, DocumentRow, DocumentType, Dossier, Member,
@@ -23,7 +23,7 @@ import { RequestsPanel } from "@/components/RequestsPanel";
 import { Timer } from "@/components/Timer";
 import {
   addMemberAction, assignAction, correctSessionAction, submitDossierAction, submitReviewAction,
-  transitionAction, validateHoursAction,
+  setDocumentExpiryAction, transitionAction, validateHoursAction,
 } from "@/app/actions";
 
 export default async function DossierPage({ params }: { params: Promise<{ id: string }> }) {
@@ -82,6 +82,9 @@ export default async function DossierPage({ params }: { params: Promise<{ id: st
   const sessionList = (sessions ?? []) as TimeSession[];
 
   const closed = d.status === 90 || d.status === 99;
+  const expiringSoon = closed ? [] : docList
+    .filter((x) => x.is_current && x.expires_on && daysUntil(x.expires_on) <= 90)
+    .sort((a, b) => a.expires_on!.localeCompare(b.expires_on!));
   const isProcessor = hasRole(profile, "TRT") && d.processor_id === profile.id;
   const isController = hasRole(profile, "CTL") && d.controller_id === profile.id && d.processor_id !== profile.id;
   const isManager = actorCan(profile, d, ["GBR", "CHF", "ADM"]);
@@ -262,6 +265,28 @@ export default async function DossierPage({ params }: { params: Promise<{ id: st
             </Card>
           )}
 
+          {expiringSoon.length > 0 && (
+            <div className="rounded-2xl border border-brand-red/25 bg-brand-red-light/60 p-4">
+              <p className="text-sm font-semibold text-brand-red-dark">
+                {expiringSoon.length === 1 ? "Une pièce expire" : `${expiringSoon.length} pièces expirent`} dans les 90 jours ou sont déjà expirées
+              </p>
+              <ul className="mt-2 space-y-1 text-sm">
+                {expiringSoon.map((doc) => {
+                  const e = expiryLabel(daysUntil(doc.expires_on!));
+                  return (
+                    <li key={doc.id} className="flex flex-wrap items-center gap-2">
+                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${e.tone}`}>{e.text}</span>
+                      <span className="text-slate-900">{typeLabel(doc.type_code)}</span>
+                      <span className="font-mono text-xs text-slate-500">{doc.person_code}</span>
+                      <span className="text-xs text-slate-500">· {formatDate(doc.expires_on)}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+              <p className="mt-2 text-xs text-slate-600">Demandez au client la pièce renouvelée et déposez-la : la nouvelle version remplace l&apos;ancienne.</p>
+            </div>
+          )}
+
           {/* Pièces, rangées par sous-dossier */}
           <Card
             title="Pièces du dossier"
@@ -286,9 +311,34 @@ export default async function DossierPage({ params }: { params: Promise<{ id: st
                           <span>
                             <span className="font-mono text-xs">{doc.file_name}</span>
                             <span className="ml-2 text-slate-500">{typeLabel(doc.type_code)} · {doc.person_code}</span>
-                            {doc.expires_on && <span className="ml-2 text-xs text-slate-500">expire le {formatDate(doc.expires_on)}</span>}
+                            {doc.expires_on && (() => {
+                              const e = expiryLabel(daysUntil(doc.expires_on));
+                              return (
+                                <span className="ml-2 inline-flex items-center gap-1.5 text-xs text-slate-500">
+                                  expire le {formatDate(doc.expires_on)}
+                                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${e.tone}`}>{e.text}</span>
+                                </span>
+                              );
+                            })()}
                           </span>
                           <span className="flex items-center gap-2">
+                            {canUpload && (
+                              <details className="relative">
+                                <summary className="cursor-pointer list-none rounded-md px-2 py-1 text-xs font-medium text-slate-500 hover:bg-surface hover:text-navy">
+                                  {doc.expires_on ? "Corriger la date" : "Ajouter une date"}
+                                </summary>
+                                <div className="absolute right-0 z-10 mt-1 w-64 rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
+                                  <ActionForm action={setDocumentExpiryAction} submitLabel="Enregistrer" size="sm" className="space-y-2">
+                                    <input type="hidden" name="document" value={doc.id} />
+                                    <input type="hidden" name="dossier" value={id} />
+                                    <label className="block text-xs font-medium text-slate-700">
+                                      Date d&apos;expiration
+                                      <input type="date" name="expires_on" defaultValue={doc.expires_on ?? ""} className={`${inputClass} mt-1`} />
+                                    </label>
+                                  </ActionForm>
+                                </div>
+                              </details>
+                            )}
                             <OpenDocumentButton documentId={doc.id} />
                             {canDownload && <DownloadDocumentButton documentId={doc.id} />}
                           </span>

@@ -16,6 +16,7 @@ const ICONS: Record<string, React.ReactNode> = {
   shield: <path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6zM9.5 11.5V10a2.5 2.5 0 0 1 5 0v1.5M9 11.5h6v4H9z" />,
   list: <path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01" />,
   inbox: <path d="M4 13h4l1.5 3h5L16 13h4M4 13l2.5-8h11L20 13v6H4z" />,
+  hourglass: <path d="M6 3h12M6 21h12M7 3v3.5a5 5 0 0 0 2.2 4.1L12 12l2.8 1.4A5 5 0 0 1 17 17.5V21M17 3v3.5a5 5 0 0 1-2.2 4.1L12 12l-2.8 1.4A5 5 0 0 0 7 17.5V21" />,
   user: <path d="M20 20v-1a5 5 0 0 0-5-5H9a5 5 0 0 0-5 5v1M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />,
 };
 

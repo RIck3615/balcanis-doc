@@ -15,6 +15,7 @@ Elle met en œuvre le document « Plateforme BalCanis : Cadrage fonctionnel de l
 | Circuit | Statuts 00 à 99, transitions autorisées par rôle, motif obligatoire pour les retours, réassignations et annulations |
 | Formulaires officiels | Liste des formulaires IRCC à remplir par programme (ex. IMM 1294, IMM 5645, IMM 5476 pour un permis d'études), téléversement par l'agent de traitement avec nom conforme à la nomenclature, blocage de l'envoi au contrôle tant qu'un formulaire manque, liste modifiable dans Administration > Formulaires |
 | Suivi après la soumission | Demandes de l'autorité (biométrie, examen médical, pièces supplémentaires, entrevue, passeport…) avec date limite ; préparées par l'agent de collecte ou de traitement, envoyées par le chef ; statut 85 « Complément demandé » tant qu'une demande est ouverte ; décision impossible tant qu'il en reste ; rappels 7, 3 et 1 jour(s) avant et en cas de retard ; page Suivi IRCC |
+| Alertes d'expiration | Date d'expiration obligatoire au dépôt du passeport, de la pièce d'identité, des tests de langue (TEF, TCF, IELTS, CELPIP), du certificat de police, de l'examen médical, du CAQ, du CSQ, de l'EIMT, de l'offre d'emploi et de la lettre d'admission ; badge d'échéance sur chaque pièce et encadré d'alerte dans le dossier ; page « Pièces à renouveler » (30, 60, 90 jours, 6 mois) ; rappels 90, 60, 30, 14, 7 jours avant, le jour même puis chaque semaine : agent de collecte, agent de traitement, gestionnaire du bureau (30 jours et moins) et chef (dossiers soumis) |
 | Contrôle qualité | Auto-vérification par l'agent de traitement, liste de contrôle par le contrôleur, renvois numérotés (`…-R01`) avec motifs. Le contrôleur ne peut jamais être le traitant |
 | Validation | Seul le chef du cabinet valide et soumet (aucune délégation) ; numéro de demande obligatoire |
 | Temps et paie | Chronomètre par dossier, pause automatique après 10 minutes d'inactivité, temps du statut 55 mesuré mais non payé, validation des heures après le contrôle, corrections avec motif, relevé mensuel par agent |
@@ -72,6 +73,12 @@ Pour les rappels d'échéance des demandes de l'autorité (après la soumission)
 
 ```sql
 select cron.schedule('echeances-autorite', '5 7 * * *', $$select public.notify_request_deadlines()$$);
+```
+
+Pour les alertes d'expiration des pièces, ajoutez :
+
+```sql
+select cron.schedule('expirations-pieces', '10 7 * * *', $$select public.notify_document_expirations()$$);
 ```
 
 Chaque matin à 7 h UTC (8 h à Kinshasa), les gestionnaires reçoivent une notification pour chaque dossier de leur bureau resté 7 jours ou plus dans le même statut.
