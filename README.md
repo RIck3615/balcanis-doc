@@ -21,6 +21,7 @@ Elle met en œuvre le document « Plateforme BalCanis : Cadrage fonctionnel de l
 | Bureaux | Création, modification et fermeture des bureaux par l'administrateur ou le chef ; chiffres par bureau ; un bureau fermé garde son historique mais n'accepte plus de nouveaux dossiers |
 | Journal d'audit | Chaque action est enregistrée (qui, quand, avant/après, motif), y compris la consultation des pièces. Le journal ne peut être ni modifié ni effacé |
 | Administration | Agents, bureaux, formulaires par programme, sécurité et paramètres (2FA obligatoire, téléchargement, inactivité, taille des fichiers), journal d'audit avec filtres et export CSV, export CSV des heures pour la paie |
+| Photos de profil | Chaque agent ajoute sa photo dans Mon profil (l'administrateur et le chef peuvent la changer ou la retirer) ; recadrée et allégée dans le navigateur, sans les métadonnées d'origine (position GPS) ; seau privé visible seulement par le personnel connecté |
 | Agents | Création des comptes par l'administrateur ou le chef (mot de passe temporaire à changer à la première connexion), réinitialisation du mot de passe, rôles, bureau, programmes certifiés, taux horaire ; chaque agent choisit son moyen et sa fréquence de paiement, l'administrateur confirme |
 
 **Pas encore fait** (phase 2) : portail client, module de formation et certification, tableaux de bord avancés, envoi des notifications par courriel ou WhatsApp, saisie des formulaires IRCC dans la plateforme, export comptable.

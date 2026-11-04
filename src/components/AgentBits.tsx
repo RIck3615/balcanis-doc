@@ -20,14 +20,22 @@ export function RoleChip({ role, short }: { role: AppRole; short?: boolean }) {
   );
 }
 
-export function Avatar({ name, active = true, size = "md" }: { name: string; active?: boolean; size?: "md" | "lg" }) {
+export function Avatar({
+  name, active = true, size = "md", src,
+}: { name: string; active?: boolean; size?: "sm" | "md" | "lg" | "xl"; src?: string | null }) {
   const initials = name
     .split(/[\s@.]+/)
     .filter(Boolean)
     .slice(0, 2)
     .map((w) => w[0]!.toUpperCase())
     .join("");
-  const dims = size === "lg" ? "h-14 w-14 text-lg" : "h-9 w-9 text-xs";
+  const dims = { sm: "h-7 w-7 text-[10px]", md: "h-9 w-9 text-xs", lg: "h-14 w-14 text-lg", xl: "h-24 w-24 text-2xl" }[size];
+  if (src) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={src} alt={name} className={`shrink-0 rounded-full object-cover ring-2 ring-white ${dims} ${active ? "" : "grayscale"}`} />
+    );
+  }
   return (
     <span className={`flex shrink-0 items-center justify-center rounded-full font-semibold ${dims} ${active ? "bg-navy text-white" : "bg-slate-200 text-slate-500"}`}>
       {initials || "?"}

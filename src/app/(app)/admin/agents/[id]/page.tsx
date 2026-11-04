@@ -7,6 +7,8 @@ import { ActionForm } from "@/components/ActionForm";
 import { ResetPasswordForm } from "@/components/AgentAccountForms";
 import { Avatar, Flag, ROLE_ORDER, RoleChip } from "@/components/AgentBits";
 import { DossierTable } from "@/components/DossierTable";
+import { AvatarUpload } from "@/components/AvatarUpload";
+import { signAvatars } from "@/lib/avatars";
 import { Card, Field, inputClass } from "@/components/ui";
 import { adminSetProfileAction, approvePaymentAction, setAvailabilityAction } from "@/app/actions";
 import { ROLE_LABELS, formatDateTime } from "@/lib/labels";
@@ -41,6 +43,8 @@ export default async function AgentPage({ params }: { params: Promise<{ id: stri
   const p = profile as Profile;
   const pay = payment as AgentPayment | null;
   const isMe = p.id === me.id;
+  const urls = await signAvatars(supabase, [p.avatar_path]);
+  const photo = p.avatar_path ? urls[p.avatar_path] ?? null : null;
 
   return (
     <div className="space-y-5">
@@ -48,7 +52,7 @@ export default async function AgentPage({ params }: { params: Promise<{ id: stri
 
       {/* Fiche */}
       <section className="flex flex-wrap items-center gap-5 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-[0_1px_3px_rgba(16,24,40,0.05)]">
-        <Avatar name={p.full_name || p.email} active={p.active} size="lg" />
+        <Avatar name={p.full_name || p.email} active={p.active} size="lg" src={photo} />
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-semibold tracking-tight text-navy">{p.full_name || "Sans nom"}</h1>
           <p className="text-sm text-slate-500">
@@ -126,6 +130,10 @@ export default async function AgentPage({ params }: { params: Promise<{ id: stri
               </ActionForm>
             </Card>
           )}
+
+          <Card title="Photo de profil">
+            <AvatarUpload userId={p.id} name={p.full_name || p.email} src={photo} self={isMe} />
+          </Card>
 
           <Card title="Accès">
             <p className="mb-3 text-sm text-slate-600">

@@ -13,6 +13,7 @@ export interface Profile {
   active: boolean;
   available: boolean;
   must_change_password: boolean;
+  avatar_path: string | null;
 }
 
 export interface AgentPayment {
@@ -33,6 +34,7 @@ export interface StaffEntry {
   certified_programs: string[];
   active: boolean;
   available: boolean;
+  avatar_path: string | null;
 }
 
 export interface Program {

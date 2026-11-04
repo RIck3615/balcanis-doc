@@ -335,4 +335,18 @@ select test.expect_error($$select public.set_audit_context('x', 'y')$$, 'permiss
 select count(*) as annuaire_avec_courriel from information_schema.columns where table_name = 'staff_directory' and column_name = 'email';
 reset role;
 select action from public.audit_log where object_type = 'app_settings' order by id;
+-- Photo de profil (0013)
+set role authenticated;
+select test.as_user('trt@balcanis.test');
+select public.set_avatar(auth.uid(), auth.uid()::text || '/11111111-1111-1111-1111-111111111111.jpg') is null as premiere_photo;
+select avatar_path is not null as photo_enregistree from public.profiles where id = auth.uid();
+select test.expect_error(format($$select public.set_avatar(%L, %L)$$, (select id from auth.users where email = 'chef@balcanis.test'),
+  (select id from auth.users where email = 'chef@balcanis.test')::text || '/11111111-1111-1111-1111-111111111111.jpg'), 'propre photo');
+select test.expect_error($$select public.set_avatar(auth.uid(), 'autre/chemin.exe')$$, 'invalide');
+select test.expect_error(format($$insert into storage.objects (bucket_id, name) values ('avatars', %L)$$,
+  (select id from auth.users where email = 'chef@balcanis.test')::text || '/22222222-2222-2222-2222-222222222222.jpg'), 'row-level security');
+insert into storage.objects (bucket_id, name) values ('avatars', auth.uid()::text || '/33333333-3333-3333-3333-333333333333.jpg');
+select test.as_user('chef@balcanis.test');
+select public.set_avatar((select id from auth.users where email = 'trt@balcanis.test'), null) is not null as retiree_par_chef;
+select count(*) > 0 as avatars_dans_annuaire from information_schema.columns where table_name = 'staff_directory' and column_name = 'avatar_path';
 select 'SCÉNARIO RÉUSSI' as resultat;

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, Empty, PageTitle, StatTile, buttonClass, inputClass } from "@/components/ui";
 import { Avatar, Flag, ROLE_ORDER, RoleChip } from "@/components/AgentBits";
 import type { AgentPayment, AppRole, Dossier, Profile } from "@/lib/types";
+import { signAvatars } from "@/lib/avatars";
 
 type Tab = { key: string; label: string; match: (p: Profile) => boolean };
 
@@ -27,6 +28,7 @@ export default async function AgentsPage({ searchParams }: { searchParams: Promi
     supabase.from("dossiers").select("collector_id, processor_id, controller_id, status").lt("status", 90),
   ]);
   const all = (profiles ?? []) as Profile[];
+  const urls = await signAvatars(supabase, all.map((p) => p.avatar_path));
   const pays = (payments ?? []) as AgentPayment[];
   const open = (dossiers ?? []) as Pick<Dossier, "collector_id" | "processor_id" | "controller_id" | "status">[];
 
@@ -109,7 +111,7 @@ export default async function AgentsPage({ searchParams }: { searchParams: Promi
                   <tr key={p.id} className="transition hover:bg-navy-light/40">
                     <td className="px-5 py-3">
                       <Link href={`/admin/agents/${p.id}`} className="flex items-center gap-3">
-                        <Avatar name={p.full_name || p.email} active={p.active} />
+                        <Avatar name={p.full_name || p.email} active={p.active} src={p.avatar_path ? urls[p.avatar_path] : null} />
                         <span className="min-w-0">
                           <span className="block font-medium text-slate-900">{p.full_name || "Sans nom"}</span>
                           <span className="block truncate text-xs text-slate-500">

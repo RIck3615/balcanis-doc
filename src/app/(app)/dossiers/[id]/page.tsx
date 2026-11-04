@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { isUuid } from "@/lib/ids";
 import { getSettings } from "@/lib/settings";
+import { signAvatars } from "@/lib/avatars";
+import { Avatar } from "@/components/AgentBits";
 import { getProfile, hasRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { actorCan, isDedicatedTransition } from "@/lib/permissions";
@@ -61,6 +63,8 @@ export default async function DossierPage({ params }: { params: Promise<{ id: st
   const formsMissing = forms.filter((f) => !f.document_id).length;
 
   const staffList = (staff ?? []) as StaffEntry[];
+  const people = [d.collector_id, d.processor_id, d.controller_id].map((uid) => staffList.find((x) => x.id === uid));
+  const avatarUrls = await signAvatars(supabase, people.map((x) => x?.avatar_path));
   const nameOf = (uid: string | null) => {
     if (!uid) return "Non assigné";
     const s = staffList.find((x) => x.id === uid);
@@ -135,9 +139,18 @@ export default async function DossierPage({ params }: { params: Promise<{ id: st
           {/* Personnes assignées */}
           <Card title="Intervenants">
             <dl className="grid gap-2 text-sm sm:grid-cols-3">
-              <div><dt className="text-xs text-slate-500">Agent de collecte</dt><dd>{nameOf(d.collector_id)}</dd></div>
-              <div><dt className="text-xs text-slate-500">Agent de traitement</dt><dd>{nameOf(d.processor_id)}</dd></div>
-              <div><dt className="text-xs text-slate-500">Contrôleur</dt><dd>{nameOf(d.controller_id)}</dd></div>
+              {([["Agent de collecte", 0], ["Agent de traitement", 1], ["Contrôleur", 2]] as const).map(([label, i]) => {
+                const who = people[i];
+                return (
+                  <div key={label} className="flex items-center gap-2.5">
+                    {who ? <Avatar name={who.full_name} size="sm" src={who.avatar_path ? avatarUrls[who.avatar_path] : null} /> : <span className="h-7 w-7 shrink-0 rounded-full border border-dashed border-slate-300" />}
+                    <div className="min-w-0">
+                      <dt className="text-xs text-slate-500">{label}</dt>
+                      <dd className="truncate">{who ? `${who.agent_code ?? ""} · ${who.full_name}` : "Non assigné"}</dd>
+                    </div>
+                  </div>
+                );
+              })}
               {d.submission_number && (
                 <div><dt className="text-xs text-slate-500">N° de demande</dt><dd className="font-mono">{d.submission_number} ({formatDate(d.submitted_at)})</dd></div>
               )}

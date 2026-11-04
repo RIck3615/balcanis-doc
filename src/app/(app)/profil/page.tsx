@@ -6,12 +6,15 @@ import { setAvailabilityAction, updateMyPaymentAction } from "@/app/actions";
 import { ROLE_LABELS } from "@/lib/labels";
 import { createClient } from "@/lib/supabase/server";
 import type { AgentPayment } from "@/lib/types";
+import { AvatarUpload } from "@/components/AvatarUpload";
+import { signAvatars } from "@/lib/avatars";
 
 export default async function ProfilPage() {
   const p = await getProfile();
   const supabase = await createClient();
   const { data } = await supabase.from("agent_payments").select("*").eq("agent_id", p.id).maybeSingle();
   const pay = data as AgentPayment | null;
+  const urls = await signAvatars(supabase, [p.avatar_path]);
   return (
     <div className="max-w-2xl space-y-4">
       <PageTitle eyebrow="Compte">Mon profil</PageTitle>
@@ -29,6 +32,9 @@ export default async function ProfilPage() {
           </ActionForm>
         </Card>
       )}
+      <Card title="Photo de profil">
+        <AvatarUpload userId={p.id} name={p.full_name || p.email} src={p.avatar_path ? urls[p.avatar_path] ?? null : null} self />
+      </Card>
       <Card title="Identité">
         <dl className="grid gap-2 text-sm sm:grid-cols-2">
           <div><dt className="text-xs text-slate-500">Nom</dt><dd>{p.full_name || "Non renseigné"}</dd></div>

@@ -7,10 +7,12 @@ import { Card, Field, PageTitle, StatTile, inputClass } from "@/components/ui";
 import { forceSignOutAction, resetMfaAction, updateSettingsAction } from "@/app/actions";
 import { formatDateTime } from "@/lib/labels";
 import type { AppRole } from "@/lib/types";
+import { signAvatars } from "@/lib/avatars";
 
 type Row = {
   id: string; email: string; full_name: string; agent_code: string | null; roles: AppRole[]; active: boolean;
   last_sign_in_at: string | null; mfa_enabled: boolean; must_change_password: boolean; banned: boolean; open_sessions: number;
+  avatar_path: string | null;
 };
 
 export default async function SecuritePage() {
@@ -19,6 +21,7 @@ export default async function SecuritePage() {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("security_overview");
   const rows = (data ?? []) as Row[];
+  const urls = await signAvatars(supabase, rows.map((r) => r.avatar_path));
   const active = rows.filter((r) => r.active);
   const withMfa = active.filter((r) => r.mfa_enabled).length;
   const dormant = active.filter((r) => !r.last_sign_in_at || Date.now() - new Date(r.last_sign_in_at).getTime() > 30 * 864e5).length;
@@ -84,7 +87,7 @@ export default async function SecuritePage() {
                   <tr key={r.id} className={r.active ? "" : "opacity-60"}>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
-                        <Avatar name={r.full_name || r.email} active={r.active} />
+                        <Avatar name={r.full_name || r.email} active={r.active} src={r.avatar_path ? urls[r.avatar_path] : null} />
                         <div className="min-w-0">
                           <p className="font-medium text-slate-900">{r.full_name || r.email}</p>
                           <div className="mt-0.5 flex flex-wrap items-center gap-1">

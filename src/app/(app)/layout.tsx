@@ -7,6 +7,8 @@ import { Nav, type NavItem } from "@/components/Nav";
 import { NotificationBell } from "@/components/NotificationBell";
 import { IdleLogout } from "@/components/IdleLogout";
 import { getSettings } from "@/lib/settings";
+import { signAvatars } from "@/lib/avatars";
+import { Avatar } from "@/components/AgentBits";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -24,6 +26,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .select("id", { count: "exact", head: true })
     .eq("user_id", profile.id)
     .is("read_at", null);
+  const avatarUrls = await signAvatars(supabase, [profile.avatar_path]);
   const items: (NavItem & { show: boolean })[] = [
     { href: "/", label: "Tableau de bord", icon: "home", show: true },
     { href: "/dossiers", label: "Dossiers", icon: "folder", show: true },
@@ -37,12 +40,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/admin/journal", label: "Journal d'audit", icon: "list", show: hasRole(profile, "ADM", "CHF") },
     { href: "/profil", label: "Mon profil", icon: "user", show: true },
   ];
-  const initials = (profile.full_name || profile.email)
-    .split(/[\s@.]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]!.toUpperCase())
-    .join("");
 
   return (
     <div className="min-h-screen bg-surface md:flex">
@@ -62,7 +59,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="mt-auto hidden p-3 md:block">
           <div className="rounded-2xl bg-surface p-3">
             <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-navy text-sm font-semibold text-white">{initials}</span>
+              <Avatar name={profile.full_name || profile.email} src={profile.avatar_path ? avatarUrls[profile.avatar_path] : null} />
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-slate-900">{profile.full_name || profile.email}</p>
                 <p className="font-mono text-xs text-slate-500">{profile.agent_code ?? "Sans code agent"}</p>
