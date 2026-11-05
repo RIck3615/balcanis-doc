@@ -65,9 +65,14 @@ function ToolButton({ label, onClick, disabled, children }: { label: string; onC
   );
 }
 
+// Visionneuse intégrée dans une page (espace de contrôle) : mêmes outils, sans plein écran
+export function InlineViewer(props: { docs: ViewerDoc[]; id: string; onChange: (id: string) => void; canDownload: boolean; watermark: string }) {
+  return <Viewer {...props} onClose={() => {}} inline />;
+}
+
 function Viewer({
-  docs, id, onChange, onClose, canDownload, watermark,
-}: { docs: ViewerDoc[]; id: string; onChange: (id: string) => void; onClose: () => void; canDownload: boolean; watermark: string }) {
+  docs, id, onChange, onClose, canDownload, watermark, inline = false,
+}: { docs: ViewerDoc[]; id: string; onChange: (id: string) => void; onClose: () => void; canDownload: boolean; watermark: string; inline?: boolean }) {
   const index = Math.max(0, docs.findIndex((d) => d.id === id));
   const doc = docs[index];
   const [loaded, setLoaded] = useState<Loaded | null>(null);
@@ -131,7 +136,10 @@ function Viewer({
   // clavier : Échap, flèches, + et -
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      // pas de raccourci pendant la saisie d'un texte
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+      if (e.key === "Escape") { if (!inline) onClose(); }
       else if (e.key === "ArrowRight" && !e.altKey) go(1);
       else if (e.key === "ArrowLeft" && !e.altKey) go(-1);
       else if (e.key === "+" || e.key === "=") zoomBy(1);
@@ -139,24 +147,27 @@ function Viewer({
     };
     window.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    if (!inline) document.body.style.overflow = "hidden";
     return () => {
       window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
+      if (!inline) document.body.style.overflow = prev;
     };
-  }, [go, onClose, zoomBy]);
+  }, [go, onClose, zoomBy, inline]);
 
   if (!doc) return null;
   const expiry = doc.expires_on ? expiryLabel(daysUntil(doc.expires_on)) : null;
   const blockMenu = canDownload ? undefined : (e: React.MouseEvent) => e.preventDefault();
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col bg-slate-950/95 text-white backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={`Visionneuse : ${doc.file_name}`}>
+    <div className={inline ? "flex h-full min-h-0 flex-col overflow-hidden rounded-2xl bg-slate-950 text-white" : "fixed inset-0 z-[60] flex flex-col bg-slate-950/95 text-white backdrop-blur-sm"}
+      role={inline ? "region" : "dialog"} aria-modal={inline ? undefined : true} aria-label={`Visionneuse : ${doc.file_name}`}>
       {/* barre du haut */}
       <header className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-white/10 bg-navy-dark/80 px-3 py-2 sm:px-4">
-        <ToolButton label="Liste des pièces" onClick={() => setList((v) => !v)}>
-          <Icon d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01" className="h-5 w-5" />
-        </ToolButton>
+        {!inline && (
+          <ToolButton label="Liste des pièces" onClick={() => setList((v) => !v)}>
+            <Icon d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01" className="h-5 w-5" />
+          </ToolButton>
+        )}
         <div className="min-w-0 flex-1">
           <p className="truncate font-mono text-[13px] text-white">{doc.file_name}</p>
           <p className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
@@ -185,7 +196,7 @@ function Viewer({
               <DownloadDocumentButton documentId={doc.id} />
             </span>
           )}
-          <ToolButton label="Fermer (Échap)" onClick={onClose}><Icon d="M6 6l12 12M18 6 6 18" className="h-5 w-5" /></ToolButton>
+          {!inline && <ToolButton label="Fermer (Échap)" onClick={onClose}><Icon d="M6 6l12 12M18 6 6 18" className="h-5 w-5" /></ToolButton>}
         </div>
       </header>
 
@@ -225,7 +236,7 @@ function Viewer({
 
       <footer className="flex items-center justify-between gap-3 border-t border-white/10 bg-navy-dark/80 px-4 py-1.5 text-[11px] text-slate-400">
         <span>{pages > 0 ? `${pages} page${pages > 1 ? "s" : ""}` : " "}</span>
-        <span className="hidden sm:inline">Échap pour fermer · flèches pour changer de pièce · + et - pour le zoom</span>
+        <span className="hidden sm:inline">{inline ? "Flèches pour changer de pièce · + et - pour le zoom" : "Échap pour fermer · flèches pour changer de pièce · + et - pour le zoom"}</span>
         <span>Consultation inscrite au journal</span>
       </footer>
     </div>

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isUuid } from "@/lib/ids";
 import { getSettings } from "@/lib/settings";
@@ -63,6 +64,18 @@ export default async function DossierPage({ params }: { params: Promise<{ id: st
   const { data: requestsData } = await supabase.from("authority_requests").select("*").eq("dossier_id", id).order("due_on");
   const requests = (requestsData ?? []) as AuthorityRequest[];
   const settings = await getSettings();
+  // pièces jugées non conformes au dernier contrôle (affichées à l'agent de traitement)
+  const lastControl = ((reviews ?? []) as { id: string; level: string; result: string }[]).find((rv) => rv.level === "controle");
+  const POINT_LABELS: Record<string, string> = {
+    piece: "bonne pièce", personne: "nom et prénom", naissance: "date de naissance", emission: "date d'émission",
+    expiration: "date d'expiration", formulaire: "formulaire", concordance: "concordance", lisible: "lisibilité",
+  };
+  type Flagged = { document_id: string; comment: string | null; points: Record<string, string>; documents: { person_code: string; type_code: string } | null };
+  const flaggedDocs = lastControl?.result === "renvoye"
+    ? (((await supabase.from("document_checks").select("document_id, comment, points, documents(person_code, type_code)")
+        .eq("review_id", lastControl.id).eq("result", "non_conforme")).data ?? []) as unknown as Flagged[])
+        .map((f) => ({ ...f, inexact: Object.entries(f.points).filter(([, v]) => v === "inexact").map(([k]) => POINT_LABELS[k] ?? k) }))
+    : [];
   const forms = (formsData ?? []) as DossierForm[];
   const formsMissing = forms.filter((f) => !f.document_id).length;
 
@@ -257,9 +270,34 @@ export default async function DossierPage({ params }: { params: Promise<{ id: st
 
           {/* Contrôle */}
           {isController && d.status === 50 && (
-            <Card title="Liste de contrôle">
-              <p className="mb-3 text-sm text-slate-600">Un seul point non conforme renvoie le dossier à l&apos;agent de traitement (statut 55).</p>
-              <ChecklistForm dossierId={id} level="controle" items={items.filter((i) => i.level === "controle")} submitLabel="Enregistrer le contrôle" withReasons />
+            <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-navy/15 bg-navy-light/60 p-5">
+              <div>
+                <p className="text-sm font-semibold text-navy">Contrôle du dossier</p>
+                <p className="mt-0.5 text-sm text-slate-600">
+                  La pièce à gauche, les informations à cocher à droite : exact ou inexact, puis la liste de contrôle et la décision.
+                </p>
+              </div>
+              <Link href={`/dossiers/${id}/controle`} className="rounded-lg bg-navy px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-navy-dark">
+                Ouvrir l&apos;espace de contrôle
+              </Link>
+            </section>
+          )}
+
+          {/* Pièces signalées par le dernier contrôle */}
+          {flaggedDocs.length > 0 && [55, 30].includes(d.status) && (
+            <Card title={`Pièces signalées par le contrôle (${flaggedDocs.length})`}>
+              <ul className="space-y-2 text-sm">
+                {flaggedDocs.map((f) => (
+                  <li key={f.document_id} className="rounded-xl bg-brand-red-light/50 px-3 py-2">
+                    <p className="font-medium text-slate-900">
+                      {typeLabel(f.documents?.type_code ?? "")} <span className="font-mono text-xs text-slate-500">{f.documents?.person_code}</span>
+                    </p>
+                    <p className="text-brand-red-dark">{f.comment}</p>
+                    {f.inexact.length > 0 && <p className="mt-0.5 text-xs text-slate-600">Points inexacts : {f.inexact.join(", ")}</p>}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-3 text-xs text-slate-500">Déposez la pièce corrigée : la nouvelle version remplace l&apos;ancienne et sera vérifiée au prochain contrôle.</p>
             </Card>
           )}
 

@@ -115,6 +115,42 @@ export async function submitReviewAction(_: ActionResult, fd: FormData): Promise
   return { ok: "Liste de contrôle enregistrée" };
 }
 
+// Espace de contrôle : vérification pièce par pièce
+export async function saveDocumentCheckAction(
+  dossierId: string, documentId: string, points: Record<string, "exact" | "inexact">, comment: string,
+): Promise<{ error?: string; result?: "conforme" | "non_conforme" }> {
+  const res = await rpc("save_document_check", { p_document: documentId, p_points: points, p_comment: comment || null });
+  if (res.error) return { error: res.error };
+  revalidatePath(`/dossiers/${dossierId}/controle`);
+  return { result: res.data as "conforme" | "non_conforme" };
+}
+
+export async function clearDocumentCheckAction(dossierId: string, documentId: string): Promise<{ error?: string }> {
+  const res = await rpc("clear_document_check", { p_document: documentId });
+  if (res.error) return { error: res.error };
+  revalidatePath(`/dossiers/${dossierId}/controle`);
+  return {};
+}
+
+export async function submitControlAction(args: {
+  dossierId: string;
+  answers: { item_id: number; answer: string; comment?: string }[];
+  comment: string;
+  reasons: string[];
+}): Promise<{ error?: string }> {
+  const res = await rpc("submit_review", {
+    p_dossier: args.dossierId,
+    p_level: "controle",
+    p_answers: args.answers,
+    p_comment: args.comment.trim() || null,
+    p_reason_codes: args.reasons,
+  });
+  if (res.error) return { error: res.error };
+  revalidatePath(`/dossiers/${args.dossierId}`);
+  revalidatePath("/controle");
+  return {};
+}
+
 export async function submitDossierAction(_: ActionResult, fd: FormData): Promise<ActionResult> {
   const dossier = str(fd, "dossier");
   const res = await rpc("submit_dossier", { p_dossier: dossier, p_submission_number: str(fd, "submission_number") });

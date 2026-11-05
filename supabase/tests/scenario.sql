@@ -115,6 +115,28 @@ select public.submit_review((select v::uuid from ctx where k = 'dossier'), 'auto
 select test.as_user('ctl@balcanis.test');
 select number, status from public.dossiers;
 select public.transition_dossier((select v::uuid from ctx where k = 'dossier'), 50::smallint);
+-- vérification pièce par pièce (0017)
+select test.expect_error(format($$select public.submit_review(%L, 'controle', %L::jsonb, 'x', '{autre}')$$,
+  (select v from ctx where k = 'dossier'),
+  (select jsonb_agg(jsonb_build_object('item_id', id, 'answer', 'conforme')) from public.checklist_items where level = 'controle')), 'Vérifiez toutes les pièces');
+select key, label, expected from public.document_check_points((select id from public.documents where type_code = 'PASSEPORT' and is_current));
+select key from public.document_check_points((select id from public.documents where type_code = 'FORMULAIRE-IMM1294'));
+select test.expect_error(format($$select public.save_document_check(%L, '{"piece":"exact"}')$$, (select id from public.documents where type_code = 'PASSEPORT' and is_current)), 'chaque point');
+select test.expect_error(format($$select public.save_document_check(%L, %L::jsonb)$$, (select id from public.documents where type_code = 'PASSEPORT' and is_current),
+  (select jsonb_object_agg(key, case when key = 'personne' then 'inexact' else 'exact' end) from public.document_check_points((select id from public.documents where type_code = 'PASSEPORT' and is_current)))), 'Expliquez');
+select count(*) as pieces_verifiees from public.documents doc,
+  lateral public.save_document_check(doc.id,
+    (select jsonb_object_agg(key, case when doc.type_code = 'PASSEPORT' and key = 'personne' then 'inexact' else 'exact' end) from public.document_check_points(doc.id)),
+    case when doc.type_code = 'PASSEPORT' then 'Prénom mal orthographié' end) r
+where doc.dossier_id = (select v::uuid from ctx where k = 'dossier') and doc.is_current;
+select d.type_code, c.round, c.result, c.comment from public.document_checks c join public.documents d on d.id = c.document_id where c.result = 'non_conforme';
+-- pièces toutes conformes à part le passeport : le renvoi est obligatoire même si la liste est conforme
+select test.expect_error(format($$select public.submit_review(%L, 'controle', %L::jsonb)$$,
+  (select v from ctx where k = 'dossier'),
+  (select jsonb_agg(jsonb_build_object('item_id', id, 'answer', 'conforme')) from public.checklist_items where level = 'controle')), 'motif');
+select test.as_user('trt@balcanis.test');
+select test.expect_error(format($$select public.save_document_check(%L, '{}')$$, (select id from public.documents where type_code = 'PASSEPORT' and is_current)), 'contrôleur');
+select test.as_user('ctl@balcanis.test');
 -- renvoi sans motif refusé, puis renvoi avec motif
 select test.expect_error(format($$select public.submit_review(%L, 'controle', %L::jsonb, 'x')$$,
   (select v from ctx where k = 'dossier'),
@@ -138,8 +160,13 @@ select status_at_start, billable, end_reason, round(extract(epoch from ended_at 
 -- Second contrôle : accepté
 select test.as_user('ctl@balcanis.test');
 select public.transition_dossier((select v::uuid from ctx where k = 'dossier'), 50::smallint);
+select public.control_round((select v::uuid from ctx where k = 'dossier')) as tour;
+select count(*) as pieces_verifiees_tour2 from public.documents doc,
+  lateral public.save_document_check(doc.id, (select jsonb_object_agg(key, 'exact') from public.document_check_points(doc.id))) r
+where doc.dossier_id = (select v::uuid from ctx where k = 'dossier') and doc.is_current;
 select public.submit_review((select v::uuid from ctx where k = 'dossier'), 'controle',
   (select jsonb_agg(jsonb_build_object('item_id', id, 'answer', 'conforme')) from public.checklist_items where level = 'controle')) is not null as controle_ok;
+select round, result, count(*), bool_and(review_id is not null) as rattachees from public.document_checks group by 1, 2 order by 1, 2;
 
 -- Le gestionnaire valide les heures ; seul le chef valide et soumet
 select test.as_user('gbr@balcanis.test');

@@ -24,7 +24,7 @@ export default async function ControlePage() {
       </Card>
       <Card title={`Prêts au contrôle, du plus ancien au plus récent (${queue.length})`}>
         <DossierTable dossiers={queue} empty="La file est vide." />
-        <p className="mt-2 text-xs text-slate-500">Ouvrez un dossier puis cliquez sur « → 50 En contrôle » pour le prendre en charge.</p>
+        <p className="mt-2 text-xs text-slate-500">Ouvrez un dossier, cliquez sur « → 50 En contrôle » pour le prendre en charge, puis sur « Ouvrir l&apos;espace de contrôle ».</p>
       </Card>
     </div>
   );
