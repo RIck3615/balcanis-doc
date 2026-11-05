@@ -61,7 +61,7 @@ export default async function CourrielsPage() {
           <ul className="space-y-2">
             <Check ok={status.pg_net_enabled}>Extension <span className="font-mono">pg_net</span> activée dans Supabase (Database &gt; Extensions)</Check>
             <Check ok={status.key_configured}>Clé d&apos;envoi Resend rangée dans le coffre Supabase sous le nom <span className="font-mono">resend_api_key</span></Check>
-            <Check ok={!!settings.url_application && !settings.url_application.includes("localhost")}>Adresse publique de la plateforme renseignée ci-contre</Check>
+            <Check ok={!!settings.url_application && !settings.url_application.includes("localhost")}>Adresse publique de la plateforme saisie dans le champ « Adresse de la plateforme » (carte Paramètres){settings.url_application.includes("localhost") && <span className="block text-xs text-slate-500">Adresse locale pour l&apos;instant : les liens des courriels ne fonctionneront que sur cet ordinateur.</span>}</Check>
             <Check ok={settings.courriel_actif}>Envoi activé</Check>
           </ul>
           <p className="mt-4 text-xs text-slate-500">
