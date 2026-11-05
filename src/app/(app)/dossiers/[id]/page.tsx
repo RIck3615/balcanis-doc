@@ -17,6 +17,7 @@ import { ActionForm } from "@/components/ActionForm";
 import { Card, Empty, Field, StatusBadge, inputClass } from "@/components/ui";
 import { DocumentUpload } from "@/components/DocumentUpload";
 import { OpenDocumentButton } from "@/components/OpenDocumentButton";
+import { DocumentViewerProvider, type ViewerDoc } from "@/components/DocumentViewer";
 import { DownloadDocumentButton, DownloadDossierButton } from "@/components/DownloadButtons";
 import { FormUploadButton } from "@/components/FormUploadButton";
 import { RequestsPanel } from "@/components/RequestsPanel";
@@ -105,7 +106,21 @@ export default async function DossierPage({ params }: { params: Promise<{ id: st
   const totalMs = (filter: (s: TimeSession) => boolean) =>
     sessionList.filter((s) => s.ended_at && filter(s)).reduce((acc, s) => acc + (new Date(s.ended_at!).getTime() - new Date(s.started_at).getTime()), 0);
 
+  // pièces affichables dans la visionneuse : versions en cours d'abord, rangées par sous-dossier
+  const viewerDocs: ViewerDoc[] = [...docList]
+    .sort((a, b) => Number(b.is_current) - Number(a.is_current) || a.category_code.localeCompare(b.category_code))
+    .map((x) => ({
+      id: x.id,
+      file_name: x.file_name,
+      label: typeLabel(x.type_code),
+      person: x.person_code,
+      folder: x.is_current ? (categoryList.find((c) => c.code === x.category_code)?.folder ?? x.category_code) : "Versions précédentes",
+      expires_on: x.expires_on,
+      is_current: x.is_current,
+    }));
+
   return (
+    <DocumentViewerProvider docs={viewerDocs} canDownload={!!canDownload} watermark={profile.agent_code ?? profile.email}>
     <div className="space-y-5">
       {/* En-tête */}
       <section className="relative overflow-hidden rounded-2xl bg-navy p-6 text-white shadow-sm">
@@ -544,6 +559,7 @@ export default async function DossierPage({ params }: { params: Promise<{ id: st
         </div>
       </div>
     </div>
+    </DocumentViewerProvider>
   );
 }
 
