@@ -31,10 +31,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const items: (NavItem & { show: boolean })[] = [
     { href: "/", label: "Tableau de bord", icon: "home", show: true },
     { href: "/dossiers", label: "Dossiers", icon: "folder", show: true },
+    { href: "/expirations", label: "Pièces à renouveler", icon: "hourglass", parent: "/dossiers", show: hasRole(profile, "COL", "TRT", "GBR", "CHF", "ADM") },
     { href: "/dossiers/nouveau", label: "Ouvrir un dossier", icon: "plus", show: hasRole(profile, "GBR", "CHF", "ADM") },
     { href: "/controle", label: "File de contrôle", icon: "check", show: hasRole(profile, "CTL") },
     { href: "/suivi", label: "Suivi IRCC", icon: "inbox", show: hasRole(profile, "GBR", "CHF", "ADM", "TRT", "COL") },
-    { href: "/expirations", label: "Pièces à renouveler", icon: "hourglass", show: hasRole(profile, "COL", "TRT", "GBR", "CHF", "ADM") },
     { href: "/heures", label: "Heures et paie", icon: "clock", show: hasRole(profile, "TRT", "GBR", "CHF", "ADM") },
     { href: "/profil", label: "Mon profil", icon: "user", show: true },
     { href: "/admin/agents", label: "Agents", icon: "users", section: "Administration", show: hasRole(profile, "ADM", "CHF") },
@@ -52,7 +52,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <NavigationProgress />
       </Suspense>
       <Sidebar
-        items={items.filter((i) => i.show).map((i) => ({ href: i.href, label: i.label, icon: i.icon, section: i.section }))}
+        items={items.filter((i) => i.show).map((i) => ({ href: i.href, label: i.label, icon: i.icon, section: i.section, parent: i.parent }))}
         initialCompact={compact}
         unread={unread ?? 0}
         user={{

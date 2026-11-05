@@ -21,7 +21,8 @@ const ICONS: Record<string, React.ReactNode> = {
   user: <path d="M20 20v-1a5 5 0 0 0-5-5H9a5 5 0 0 0-5 5v1M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />,
 };
 
-export type NavItem = { href: string; label: string; icon: keyof typeof ICONS; section?: string };
+// parent : l'entrée s'affiche en sous-menu, en retrait sous l'entrée parente
+export type NavItem = { href: string; label: string; icon: keyof typeof ICONS; section?: string; parent?: string };
 
 // Menu de navigation. En mode compact, seules les icônes restent visibles ;
 // le nom apparaît dans une bulle au survol (et reste lu par les lecteurs d'écran).
@@ -50,9 +51,11 @@ export function Nav({ items, compact = false, onNavigate }: { items: NavItem[]; 
       )}
       {items.map((item, i) => {
         const active = item.href === activeHref;
+        const sub = !!item.parent;
         const newSection = item.section && item.section !== items[i - 1]?.section;
         return (
-          <div key={item.href}>
+          <div key={item.href} className={sub && !compact ? "relative ml-5 border-l border-slate-200 pl-2" : undefined}>
+            {sub && !compact && <span className="absolute left-0 top-1/2 h-px w-2 bg-slate-200" aria-hidden />}
             {newSection &&
               (compact ? (
                 <div className="mx-2 my-2 border-t border-slate-200" aria-hidden />
@@ -66,12 +69,12 @@ export function Nav({ items, compact = false, onNavigate }: { items: NavItem[]; 
               onFocus={showTip(item.label)}
               onBlur={() => setTip(null)}
               aria-label={compact ? item.label : undefined}
-              className={`group relative flex items-center gap-3 whitespace-nowrap rounded-xl py-2.5 text-sm font-medium transition ${
-                compact ? "justify-center px-0" : "px-3"
-              } ${active ? "bg-navy text-white shadow-sm" : "text-slate-600 hover:bg-navy-light hover:text-navy"}`}
+              className={`group relative flex items-center whitespace-nowrap rounded-xl font-medium transition ${
+                sub ? "gap-2.5 py-2 text-[13px]" : "gap-3 py-2.5 text-sm"
+              } ${compact ? "justify-center px-0" : "px-3"} ${active ? "bg-navy text-white shadow-sm" : "text-slate-600 hover:bg-navy-light hover:text-navy"}`}
             >
-              {active && <span className="absolute -left-3 top-2 h-7 w-1 rounded-r-full bg-brand-red" aria-hidden />}
-              <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              {active && !(sub && !compact) && <span className="absolute -left-3 top-2 h-7 w-1 rounded-r-full bg-brand-red" aria-hidden />}
+              <svg viewBox="0 0 24 24" className={`${sub ? "h-4 w-4" : "h-5 w-5"} shrink-0`} fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 {ICONS[item.icon]}
               </svg>
               {!compact && item.label}
