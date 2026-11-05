@@ -14,6 +14,7 @@ export interface Profile {
   available: boolean;
   must_change_password: boolean;
   avatar_path: string | null;
+  email_pref?: "tous" | "quotidien" | "aucun";
 }
 
 export interface AgentPayment {

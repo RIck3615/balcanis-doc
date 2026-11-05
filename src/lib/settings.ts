@@ -6,9 +6,15 @@ export type Settings = {
   telechargement_traitement: boolean;
   inactivite_minutes: number;
   taille_max_fichier_mo: number;
+  courriel_actif: boolean;
+  courriel_expediteur: string;
+  url_application: string;
+  courriel_delai_minutes: number;
 };
 
-const DEFAULTS: Settings = { mfa_obligatoire: false, telechargement_traitement: false, inactivite_minutes: 30, taille_max_fichier_mo: 20 };
+const DEFAULTS: Settings = { mfa_obligatoire: false, telechargement_traitement: false, inactivite_minutes: 30, taille_max_fichier_mo: 20,
+  courriel_actif: false, courriel_expediteur: "BalCanis <notifications@balcanis.ca>", url_application: "", courriel_delai_minutes: 10,
+};
 
 // Paramètres de l'application (table app_settings), lus une fois par requête
 export const getSettings = cache(async (): Promise<Settings> => {

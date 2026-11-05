@@ -366,6 +366,35 @@ export async function updateSettingsAction(_: ActionResult, fd: FormData): Promi
   return { ok: "Paramètres enregistrés" };
 }
 
+export async function updateEmailSettingsAction(_: ActionResult, fd: FormData): Promise<ActionResult> {
+  const updates: [string, unknown][] = [
+    ["courriel_expediteur", str(fd, "courriel_expediteur")],
+    ["url_application", str(fd, "url_application").replace(/\/+$/, "")],
+    ["courriel_delai_minutes", Number(str(fd, "courriel_delai_minutes"))],
+    ["courriel_actif", fd.get("courriel_actif") === "on"],
+  ];
+  for (const [key, value] of updates) {
+    const res = await rpc("update_setting", { p_key: key, p_value: value });
+    if (res.error) return { error: res.error };
+  }
+  revalidatePath("/admin/courriels");
+  return { ok: "Paramètres des courriels enregistrés" };
+}
+
+export async function sendTestEmailAction(): Promise<ActionResult> {
+  const res = await rpc("send_test_email", {});
+  if (res.error) return { error: res.error };
+  revalidatePath("/admin/courriels");
+  return { ok: "Courriel de test envoyé à votre adresse. Rechargez la page dans une minute pour voir le résultat." };
+}
+
+export async function setEmailPrefAction(_: ActionResult, fd: FormData): Promise<ActionResult> {
+  const res = await rpc("set_email_pref", { p_pref: str(fd, "pref") });
+  if (res.error) return { error: res.error };
+  revalidatePath("/profil");
+  return { ok: "Préférence enregistrée" };
+}
+
 export async function forceSignOutAction(_: ActionResult, fd: FormData): Promise<ActionResult> {
   const res = await rpc("force_sign_out", { p_user: str(fd, "user") });
   if (res.error) return { error: res.error };

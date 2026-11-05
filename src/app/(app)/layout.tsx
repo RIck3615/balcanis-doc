@@ -40,6 +40,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/admin/agents", label: "Agents", icon: "users", section: "Administration", show: hasRole(profile, "ADM", "CHF") },
     { href: "/admin/bureaux", label: "Bureaux", icon: "building", section: "Administration", show: hasRole(profile, "ADM", "CHF") },
     { href: "/admin/formulaires", label: "Formulaires", icon: "file", section: "Administration", show: hasRole(profile, "ADM", "CHF") },
+    { href: "/admin/courriels", label: "Courriels", icon: "mail", section: "Administration", show: hasRole(profile, "ADM", "CHF") },
     { href: "/admin/securite", label: "Sécurité", icon: "shield", section: "Administration", show: hasRole(profile, "ADM", "CHF") },
     { href: "/admin/journal", label: "Journal d'audit", icon: "list", section: "Administration", show: hasRole(profile, "ADM", "CHF") },
   ];

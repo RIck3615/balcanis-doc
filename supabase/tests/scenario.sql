@@ -416,5 +416,61 @@ select public.notify_document_expirations() as rappels;
 select public.notify_document_expirations() as rappels_en_double;
 select p.agent_code, n.title, n.body from public.notifications n join public.profiles p on p.id = n.user_id
 where n.kind = 'expiration' order by n.id;
+-- Notifications par courriel (0016)
+reset role;
+update public.app_settings set value = 'true' where key = 'courriel_actif';
+update public.app_settings set value = '0' where key = 'courriel_delai_minutes';
+update public.app_settings set value = '"https://dossiers.balcanis.ca"' where key = 'url_application';
+-- sans clé ni pg_net : les courriels restent en échec, rien ne casse
+select public.process_email_queue() as lots_sans_cle;
+select status, last_error, count(*) from public.email_outbox group by 1, 2;
+-- service d'envoi simulé
+create schema if not exists vault;
+create table vault.decrypted_secrets (name text, decrypted_secret text);
+insert into vault.decrypted_secrets values ('resend_api_key', 're_test');
+create schema if not exists net;
+create table net._http_response (id bigserial primary key, status_code int, content text, error_msg text, timed_out boolean default false, created timestamptz default now());
+create table net.sent (id bigint, url text, body jsonb, headers jsonb);
+create function net.http_post(url text, body jsonb, params jsonb, headers jsonb, timeout_milliseconds integer) returns bigint
+language plpgsql as $f$
+declare v bigint;
+begin
+  insert into net._http_response (status_code, content) values (case when body->'to'->>0 like 'chef%' then 422 else 200 end, '{"ok":1}') returning id into v;
+  insert into net.sent values (v, url, body, headers);
+  return v;
+end $f$;
+-- une notification lue à l'écran ne part pas par courriel ; une préférence « aucun » est respectée
+update public.profiles set email_pref = 'aucun' where email = 'ctl@balcanis.test';
+insert into public.notifications (user_id, kind, title, body, link)
+select id, 'renvoi', 'Dossier renvoyé <script>', 'BC-KIN-2026-00001-PE', '/dossiers/x' from public.profiles where email in ('trt@balcanis.test', 'ctl@balcanis.test', 'col@balcanis.test', 'chef@balcanis.test');
+update public.notifications set read_at = now() where user_id = (select id from public.profiles where email = 'col@balcanis.test') and title like 'Dossier renvoyé%';
+select public.process_email_queue() as lots_envoyes;
+select public.process_email_queue() as lots_relance;
+select p.email, o.kind, o.status, o.attempts, o.subject, left(coalesce(o.last_error, ''), 40) as erreur
+from public.email_outbox o join public.profiles p on p.id = o.user_id where o.request_id is not null order by o.id;
+select count(*) as courriels_ctl from public.email_outbox o join public.profiles p on p.id = o.user_id where p.email = 'ctl@balcanis.test';
+select bool_and(html like '%&lt;script&gt;%' and html not like '%<script>%') as html_echappe,
+       bool_and(html like '%https://dossiers.balcanis.ca/dossiers/x%') as lien_absolu
+from public.email_outbox where request_id is not null and to_email = 'trt@balcanis.test' and kind = 'notifications';
+select p.email, p.active, count(*) as notifs_non_envoyees from public.notifications n join public.profiles p on p.id = n.user_id
+where n.read_at is null and n.emailed_at is null group by 1, 2 order by 1;
+select headers->>'Authorization' = 'Bearer re_test' as cle_transmise from net.sent limit 1;
+set role authenticated;
+select test.as_user('trt@balcanis.test');
+select test.expect_error('select * from public.email_outbox', 'permission denied');
+select test.expect_error('select * from public.email_log(10)', 'non autorisée');
+select test.expect_error('select public.process_email_queue()', 'permission denied');
+select public.set_email_pref('quotidien');
+select test.expect_error($$select public.set_email_pref('jamais')$$, 'Préférence inconnue');
+select test.as_user('chef@balcanis.test');
+select * from public.email_status();
+select public.send_test_email() is not null as test_envoye;
+select count(*) as lignes_journal from public.email_log(10);
+select test.expect_error($$select public.update_setting('url_application', '"javascript:alert(1)"')$$, 'invalide');
+select test.expect_error($$select public.update_setting('courriel_expediteur', '"pas une adresse"')$$, 'invalide');
+select public.update_setting('courriel_expediteur', '"BalCanis <notifications@balcanis.ca>"');
+reset role;
+insert into public.notifications (user_id, kind, title) select id, 'collecte', 'Nouveau dossier à collecter' from public.profiles where email = 'trt@balcanis.test';
+select public.send_daily_email_digest() as resumes;
 set role authenticated;
 select 'SCÉNARIO RÉUSSI' as resultat;

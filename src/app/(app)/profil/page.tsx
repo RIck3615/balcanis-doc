@@ -2,7 +2,7 @@ import { getProfile } from "@/lib/auth";
 import Link from "next/link";
 import { ActionForm } from "@/components/ActionForm";
 import { Card, Field, PageTitle, buttonClass, inputClass } from "@/components/ui";
-import { setAvailabilityAction, updateMyPaymentAction } from "@/app/actions";
+import { setAvailabilityAction, setEmailPrefAction, updateMyPaymentAction } from "@/app/actions";
 import { ROLE_LABELS } from "@/lib/labels";
 import { createClient } from "@/lib/supabase/server";
 import type { AgentPayment } from "@/lib/types";
@@ -44,6 +44,26 @@ export default async function ProfilPage() {
           <div><dt className="text-xs text-slate-500">Bureau</dt><dd>{p.office_code ?? "À distance"}</dd></div>
           <div><dt className="text-xs text-slate-500">Programmes certifiés</dt><dd>{p.certified_programs.join(", ") || "Aucun"}</dd></div>
         </dl>
+      </Card>
+      <Card title="Notifications par courriel">
+        <p className="mb-3 text-sm text-slate-600">
+          Les notifications que vous n&apos;avez pas lues dans la plateforme sont envoyées à <span className="font-medium text-slate-900">{p.email}</span>.
+          Si vous les voyez à l&apos;écran, aucun courriel ne part.
+        </p>
+        <ActionForm action={setEmailPrefAction} submitLabel="Enregistrer" className="space-y-3">
+          <div className="grid gap-2 sm:grid-cols-3">
+            {[
+              { v: "tous", t: "Au fil de l'eau", d: "Quelques minutes après chaque notification non lue" },
+              { v: "quotidien", t: "Résumé quotidien", d: "Un seul courriel chaque matin" },
+              { v: "aucun", t: "Aucun courriel", d: "Seulement dans la plateforme" },
+            ].map((o) => (
+              <label key={o.v} className="flex cursor-pointer gap-2 rounded-xl border border-slate-200 p-3 text-sm transition has-[:checked]:border-navy has-[:checked]:bg-navy-light/50">
+                <input type="radio" name="pref" value={o.v} defaultChecked={(p.email_pref ?? "tous") === o.v} className="mt-0.5 accent-navy" />
+                <span><span className="block font-medium text-slate-900">{o.t}</span><span className="text-xs text-slate-500">{o.d}</span></span>
+              </label>
+            ))}
+          </div>
+        </ActionForm>
       </Card>
       <Card title="Sécurité">
         <div className="flex flex-wrap gap-3">

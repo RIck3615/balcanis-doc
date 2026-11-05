@@ -16,6 +16,7 @@ Elle met en œuvre le document « Plateforme BalCanis : Cadrage fonctionnel de l
 | Formulaires officiels | Liste des formulaires IRCC à remplir par programme (ex. IMM 1294, IMM 5645, IMM 5476 pour un permis d'études), téléversement par l'agent de traitement avec nom conforme à la nomenclature, blocage de l'envoi au contrôle tant qu'un formulaire manque, liste modifiable dans Administration > Formulaires |
 | Suivi après la soumission | Demandes de l'autorité (biométrie, examen médical, pièces supplémentaires, entrevue, passeport…) avec date limite ; préparées par l'agent de collecte ou de traitement, envoyées par le chef ; statut 85 « Complément demandé » tant qu'une demande est ouverte ; décision impossible tant qu'il en reste ; rappels 7, 3 et 1 jour(s) avant et en cas de retard ; page Suivi IRCC |
 | Alertes d'expiration | Date d'expiration obligatoire au dépôt du passeport, de la pièce d'identité, des tests de langue (TEF, TCF, IELTS, CELPIP), du certificat de police, de l'examen médical, du CAQ, du CSQ, de l'EIMT, de l'offre d'emploi et de la lettre d'admission ; badge d'échéance sur chaque pièce et encadré d'alerte dans le dossier ; page « Pièces à renouveler » (30, 60, 90 jours, 6 mois) ; rappels 90, 60, 30, 14, 7 jours avant, le jour même puis chaque semaine : agent de collecte, agent de traitement, gestionnaire du bureau (30 jours et moins) et chef (dossiers soumis) |
+| Courriels | Les notifications non lues après 10 minutes partent par courriel (regroupées en un seul message) ; aucune si l'agent les a vues à l'écran ; chaque agent choisit dans son profil : au fil de l'eau, résumé quotidien ou aucun courriel ; aucun nom de client ni pièce dans les courriels ; page Administration > Courriels (mise en service, courriel de test, journal des envois et des échecs, nouvel essai automatique) |
 | Contrôle qualité | Auto-vérification par l'agent de traitement, liste de contrôle par le contrôleur, renvois numérotés (`…-R01`) avec motifs. Le contrôleur ne peut jamais être le traitant |
 | Validation | Seul le chef du cabinet valide et soumet (aucune délégation) ; numéro de demande obligatoire |
 | Temps et paie | Chronomètre par dossier, pause automatique après 10 minutes d'inactivité, temps du statut 55 mesuré mais non payé, validation des heures après le contrôle, corrections avec motif, relevé mensuel par agent |
@@ -82,6 +83,30 @@ select cron.schedule('expirations-pieces', '10 7 * * *', $$select public.notify_
 ```
 
 Chaque matin à 7 h UTC (8 h à Kinshasa), les gestionnaires reçoivent une notification pour chaque dossier de leur bureau resté 7 jours ou plus dans le même statut.
+
+### Notifications par courriel (facultatif)
+
+Les courriels partent par le service **Resend** (gratuit jusqu'à 3 000 courriels par mois), directement depuis la base.
+
+1. Créez un compte sur https://resend.com, ajoutez votre domaine (ex. `balcanis.ca`) et ajoutez chez votre hébergeur de domaine les enregistrements DNS indiqués, jusqu'à ce que le domaine soit « Verified ».
+2. Créez une clé d'API (permission « Sending access »).
+3. Dans Supabase, activez l'extension **pg_net** (Database > Extensions).
+4. Dans le SQL Editor, rangez la clé dans le coffre (ne la collez nulle part ailleurs, ni dans le code ni dans `.env.local`) :
+
+```sql
+select vault.create_secret('VOTRE_CLE_RESEND', 'resend_api_key');
+```
+
+5. Planifiez l'envoi (toutes les 2 minutes) et le résumé du matin (7 h à Kinshasa) :
+
+```sql
+select cron.schedule('courriels', '*/2 * * * *', $$select public.process_email_queue()$$);
+select cron.schedule('courriels-resume', '0 6 * * *', $$select public.send_daily_email_digest()$$);
+```
+
+6. Dans la plateforme, page **Administration > Courriels** : renseignez l'adresse d'expédition (de votre domaine vérifié) et l'adresse publique de la plateforme, cochez « Envoyer les notifications par courriel », puis envoyez-vous un courriel de test.
+
+Pour changer de clé plus tard : `select vault.update_secret((select id from vault.secrets where name = 'resend_api_key'), 'NOUVELLE_CLE');`
 
 ### 3. Lancer l'application
 
